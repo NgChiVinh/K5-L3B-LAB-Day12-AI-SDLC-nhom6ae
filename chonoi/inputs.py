@@ -111,10 +111,13 @@ class LiveInputs:
         self._move = (0.0, 0.0)
         self._held = {b: False for b in buttons}
         self._pending = set()
+        self._buy = None
 
-    def set(self, move=None, **buttons):
+    def set(self, move=None, buy=None, **buttons):
         if move is not None:
             self._move = normalize(move)
+        if buy is not None:
+            self._buy = buy  # dùng đúng một lần ở tick kế
         for b, v in buttons.items():
             if b not in self._held:
                 continue
@@ -124,4 +127,5 @@ class LiveInputs:
 
     def advance(self) -> InputState:
         edges, self._pending = self._pending, set()
-        return InputState(self._move, dict(self._held), edges)
+        buy, self._buy = self._buy, None
+        return InputState(self._move, dict(self._held), edges, buy)

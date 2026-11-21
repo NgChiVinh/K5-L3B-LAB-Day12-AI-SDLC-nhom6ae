@@ -34,8 +34,9 @@ class GatherSim:
     mode = "gather"
     phase = "gather"
 
-    def __init__(self, tuning, scenario, streams, ids):
+    def __init__(self, tuning, scenario, streams, ids, day=1):
         t = tuning["gather"]
+        self.day = day  # Ngày hiện tại (--mode day); gather độc lập dùng bố trí Ngày 1 (quái from_day)
         self.t = t
         self.rng = streams
         self.ids = ids

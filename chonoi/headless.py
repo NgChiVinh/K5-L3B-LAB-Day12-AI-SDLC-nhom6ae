@@ -49,9 +49,6 @@ def main(argv=None) -> int:
             raise BadInput("--days chỉ dùng với --mode day")
         if a.mode == "day" and not (1 <= (a.days if a.days is not None else 1) <= 5):
             raise BadInput("--days phải là số nguyên từ 1 đến 5")
-        if a.mode == "day":
-            # TODO(Phase 2 #4, NgChiVinh): chonoi/day.py — vòng ngày gather -> quan -> shop
-            raise BadInput("--mode day đang được làm (Phase 2 #4)")
         if a.ticks < 0:
             raise BadInput("--ticks phải >= 0")
         if a.snapshot_every <= 0:
@@ -77,7 +74,7 @@ def main(argv=None) -> int:
         return 2
     try:
         run(a.mode, tuning, scenario, a.seed, frames, a.ticks, a.out, a.snapshot_every,
-            inventory=inventory, inventory_out=a.inventory_out)
+            inventory=inventory, inventory_out=a.inventory_out, days=a.days or 1)
     except BadInput as e:  # lỗi mức luật phát hiện lúc dựng sim
         sys.stderr.write(f"đầu vào sai: {e}\n")
         return 2
