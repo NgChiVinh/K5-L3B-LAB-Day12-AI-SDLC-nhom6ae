@@ -208,7 +208,10 @@ function drawQuanHud(w) {
   fitText(stoveText, 326, 72, w - 24 - 326, { size: 12, color: "#ffd1a1" });
   const orderText = customers.length
     ? customers.map((c) => {
-        const left = c.patience_ticks_left === undefined ? "" : " · " + Math.ceil(c.patience_ticks_left / 60) + "s";
+        // Khách đang ăn không mất kiên nhẫn (PRD mục F) -> hiện thời gian ăn còn lại; khách chờ -> kiên nhẫn.
+        const left = c.state === "eating"
+          ? " · đang ăn " + Math.ceil((c.eat_ticks_left || 0) / 60) + "s"
+          : c.patience_ticks_left === undefined ? "" : " · " + Math.ceil(c.patience_ticks_left / 60) + "s";
         const dish = c.dish_id ? dn(c.dish_id) : (c.order_status === "unfulfillable" ? "chưa có món" : "đang chọn món");
         return c.table_id + ": " + dish + left;
       }).join("  ·  ")
