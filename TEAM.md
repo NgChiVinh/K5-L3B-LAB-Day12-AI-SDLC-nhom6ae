@@ -6,10 +6,10 @@
 |---|---|---|---|---|
 | Ngô Chí Vĩnh (2A202603724) | NgChiVinh | `sim/gather` lát 1: bơi, oxy, ngạt, Máu, giỏ · `docs/contracts/` · AGENTS.md + skills | Integrator (chốt hợp đồng kho/sự kiện, tích hợp, gắn tag) | TrungHieuPh |
 | Phan Trung Hiếu (2A202603763) | TrungHieuPh | `sim/gather` lát 2: hái, bắt cá, cập bến, ghi file kho | PO (hỏi Anh Năm hàng xóm, giữ `docs/clarify.md`) | NgChiVinh |
-| Lê Đức Trúc Lâm (2A202603787) | truclamld | `sim/quan` lát 3: khách, giữ chỗ, kiên nhẫn, rời bàn · kiểm scenario quán (`scenario.py`) | — | khoa-asta |
-| Lê Viết Khoa (2A202603737) | khoa-asta | `sim/quan` lát 4: bếp, bưng, phục vụ, tiền, boa, uy tín, đóng ca | — | truclamld |
-| Hoàng Dương Anh Quân (2A202603735) | HoangQuan23112004 | `client/ui`: HUD hai buổi (`chonoi/web/`, `live.py`) · README (chạy, điều khiển, điểm) | Scrum/Release (theo dõi mốc, standup) | khoa-asta (từ phút 20) |
-| Phạm Lê Chuẩn (2A202603784) | 22520160 | `qa`: test hộp đen theo AC, smoke hai tiến trình, `docs/verification/` + `docs/proof/` | QA lead | HoangQuan23112004 |
+| Lê Đức Trúc Lâm (2A202603787) | truclamld | `client/ui`: HUD hai buổi (`chonoi/web/`, `live.py`) · README (chạy, điều khiển, điểm) | Scrum/Release (theo dõi mốc, standup) | 22520160 (từ phút 20) |
+| Lê Viết Khoa (2A202603737) | khoa-asta | `qa`: test hộp đen theo AC, smoke hai tiến trình, `docs/verification/` + `docs/proof/` | QA lead | truclamld |
+| Hoàng Dương Anh Quân (2A202603735) | HoangQuan23112004 | `sim/quan` lát 3: khách, giữ chỗ, kiên nhẫn, rời bàn · kiểm scenario quán (`scenario.py`) | — | 22520160 |
+| Phạm Lê Chuẩn (2A202603784) | 22520160 | `sim/quan` lát 4: bếp, bưng, phục vụ, tiền, boa, uy tín, đóng ca | — | HoangQuan23112004 |
 
 **Vai quy trình:** PO (đầu mối hỏi giảng viên, giữ `docs/clarify.md`) · Integrator (giữ `docs/contracts/`, gắn tag) · QA lead · Scrum/Release. Có thể kiêm.
 
