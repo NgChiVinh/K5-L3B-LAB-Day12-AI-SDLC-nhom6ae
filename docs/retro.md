@@ -50,11 +50,14 @@
   - Cách đọc code của nhau: Integrator đọc diff + chạy cả bộ test trên bản merge thử trước mỗi PR (#1–#16); QA viết
     test hộp đen theo AC; review chéo qua PR (lát 3 ↔ 4, HUD, Cá Sấu).
   - Token theo người: chưa đo (nhật ký AI ghi "chưa đo"; mỗi người bổ sung từ `/cost` hoặc công cụ của mình nếu có).
-- **Một lần AI sai và cách nhóm xác minh:** ở P1, `git merge-tree` báo nhánh `chuan` "không conflict" nhưng bản gộp
-  do AI hỗ trợ đã mất code lát 4 và `step()` trả `None` → mọi lượt `--mode quan` crash. Nhóm phát hiện vì Integrator
-  chạy cả bộ test trên đúng code của nhánh (12 fail + 2 lỗi / 65) chứ không tin báo "không conflict"; sửa bằng merge
-  lại từ commit gốc (PR #3). Tương tự ở P3: AI ghi "ươn sau 8400 bước", bằng chứng trên `main` cho 8401 — đọc lại luật
-  "< 30" thì game đúng, AI sai.
+- **Một lần AI sai và cách nhóm xác minh:** ở P3, AI (Claude Code, Integrator) ghi trong commit `ff6638d` và nhật ký AI
+  rằng cá thể trong giỏ "ươn sau 8400 bước". Khi chạy bằng chứng trên `main` (`docs/proof/phase-3/prd-checks.md`) kết
+  quả là bước 8401. Nhóm không sửa code cho khớp con số của AI mà đọc lại luật TICKET-03 ("ươn khi fresh **< 30**"):
+  sau 8400 bước fresh mới bằng đúng 30 nên chưa ươn → game đúng, AI tính sai; đã đính chính nhật ký AI. Một lần khác
+  cùng P3: lớp chuyển fixture do AI viết đổi luôn fixture cố ý sai `{"ca_loc": -1}` thành hợp lệ, làm test mã 2 báo
+  sai — phát hiện vì `test_inv_bad_schema_exit_2` hỏng, sửa để chỉ đổi fixture hợp lệ.
+  (Bài học liên quan nhưng không phải lỗi AI: ở P1 `git merge-tree` báo "không conflict" cho nhánh `chuan` dù bản gộp
+  đã mất code lát 4 — chỉ chạy cả bộ test trên đúng code nhánh mới thấy, PR #3.)
 - **Nếu làm lại, đổi gì:**
   - Bật bảo vệ nhánh `main` (bắt buộc PR + test xanh) từ Phase 1; thống nhất chạy test qua `python3` (WSL/alias) để
     không ai đổi contract cho Windows.
