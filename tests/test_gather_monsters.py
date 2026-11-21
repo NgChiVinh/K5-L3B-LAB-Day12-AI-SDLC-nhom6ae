@@ -2,7 +2,7 @@
 
 import unittest
 
-from helpers import Workdir, events, read_jsonl, run_headless, snapshots, write_json
+from helpers import Workdir, events, kinds_of, read_jsonl, run_headless, snapshots, write_json
 
 
 def run_gather(w, block, ticks):
@@ -29,10 +29,16 @@ class CrocodileHit(unittest.TestCase):
                                   "monsters": [crocodile()]}, 2)
             hit = events(rows, "monster_hit")
             self.assertEqual(len(hit), 1)
-            self.assertEqual(hit[0]["data"], {"monster_id": "M9", "hp": 2,
-                                                "lost": ["keo_neo", "bong_sung"], "pos": [20.0, 10.0]})
+            hit_data = hit[0]["data"]
+            self.assertEqual((hit_data["monster_id"], hit_data["hp"], hit_data["pos"]),
+                             ("M9", 2, [20.0, 10.0]))
+            self.assertEqual(kinds_of(hit_data["lost"]), ["keo_neo", "bong_sung"])
+            self.assertEqual([it["id"] for it in hit_data["lost"]], ["I4", "I3"])
+            for it in hit_data["lost"]:
+                self.assertAlmostEqual(it["fresh"], 100 - 1 / 120, places=3)
             s1, s2 = snapshots(rows)[1:]
-            self.assertEqual(s1["hold"], ["ca_loc", "ca_linh"])
+            self.assertEqual(kinds_of(s1["hold"]), ["ca_loc", "ca_linh"])
+            self.assertEqual([it["id"] for it in s1["hold"]], ["I1", "I2"])
             self.assertEqual(s1["monsters"][0]["state"], "recoil")
             self.assertEqual(s1["monsters"][0]["state_ticks_left"], 60)
             self.assertAlmostEqual(s2["monsters"][0]["pos"][0], 20 + 2 / 60, places=3)
@@ -63,9 +69,13 @@ class CrocodileHit(unittest.TestCase):
                                   "hold": ["ca_loc", "ca_linh", "bong_sung"],
                                   "monsters": [crocodile()]}, 4)
             self.assertEqual([e["name"] for e in events(rows)], ["monster_hit", "faint", "gather_end"])
-            self.assertEqual(events(rows, "faint")[0]["data"], {
-                "cause": "monster", "lost": ["ca_linh", "ca_loc"], "hp": 0,
-            })
+            faint = events(rows, "faint")[0]["data"]
+            self.assertEqual((faint["cause"], faint["hp"]), ("monster", 0))
+            self.assertEqual(kinds_of(faint["lost"]), ["ca_linh", "ca_loc"])
+            self.assertEqual([it["id"] for it in faint["lost"]], ["I2", "I1"])
+            for it in faint["lost"]:
+                self.assertAlmostEqual(it["fresh"], 100 - 1 / 120, places=3)
+            self.assertEqual(events(rows, "gather_end")[0]["data"]["inventory"], {"items": []})
             self.assertEqual(rows[-1]["reason"], "fainted")
             self.assertEqual(snapshots(rows)[-1]["hold"], [])
 

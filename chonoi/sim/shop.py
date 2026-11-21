@@ -22,13 +22,14 @@ class ShopSim:
         self.earned = earned
         self.reputation = reputation
         self.purchased = dict(purchased)
-        self.stock = {k: v for k, v in stock.items() if v > 0}  # kho dư từ ca, bị bỏ sau Shop
+        self.stock = [dict(it) for it in stock]  # v1.2: kho dư cá thể từ ca, không hao ở Shop, bị bỏ sau Shop
         self.time_left_ticks = int(self.t["max_ticks"])
         self.done = False
         self.reason = None
 
     def snapshot(self) -> dict:
-        return {"stock": {k: self.stock[k] for k in sorted(self.stock)}}
+        from ..items import list_json
+        return {"stock": list_json(self.stock)}
 
     def step(self, inp):
         events = []

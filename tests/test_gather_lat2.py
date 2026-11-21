@@ -3,7 +3,7 @@
 import json
 import unittest
 
-from helpers import Workdir, events, frames, read_jsonl, run_headless, snapshots, write_json
+from helpers import Workdir, events, frames, items, kinds_of, read_jsonl, run_headless, snapshots, write_json
 
 
 def run_gather(w, block, ticks, inputs=None, inventory_out=None):
@@ -36,7 +36,9 @@ class Harvest(unittest.TestCase):
             self.assertEqual([(e["name"], e["data"]) for e in events(rows)],
                              [("gather", {"node_id": "N2", "kind": "bong_dien_dien", "amount": 1})])
             snap = snapshot_at(rows, 1)
-            self.assertEqual(snap["hold"], ["bong_dien_dien"])
+            self.assertEqual(kinds_of(snap["hold"]), ["bong_dien_dien"])
+            self.assertEqual(snap["hold"][0]["id"], "I1")
+            self.assertEqual(snap["hold"][0]["fresh"], 100)
             self.assertEqual({n["id"]: n["regrow_ticks"] for n in snap["nodes"]}, {"N2": 1200, "N10": 0})
 
     def test_gather_requires_surface_ready_node_and_range(self):
@@ -75,10 +77,14 @@ class Harvest(unittest.TestCase):
             }, 1, [{"tick": 0, "interact": True}], inventory_out="inventory.json")
             named_events = events(rows)
             self.assertEqual([e["name"] for e in named_events], ["gather_end"])
-            self.assertEqual(named_events[0]["data"],
-                             {"reason": "docked", "inventory": {"items": {"ca_loc": 1}}})
+            event_items = named_events[0]["data"]["inventory"]["items"]
+            self.assertEqual(named_events[0]["data"]["reason"], "docked")
+            self.assertEqual([(it["id"], it["kind"]) for it in event_items], [("I1", "ca_loc")])
+            self.assertAlmostEqual(event_items[0]["fresh"], 100 - 1 / 120, places=3)
             with open(w.path("inventory.json"), encoding="utf-8") as f:
-                self.assertEqual(json.load(f), {"items": {"ca_loc": 1}})
+                file_items = json.load(f)["items"]
+            self.assertEqual([(it["id"], it["kind"]) for it in file_items], [("I1", "ca_loc")])
+            self.assertAlmostEqual(file_items[0]["fresh"], 100 - 1 / 120, places=12)
 
     def test_regrown_node_can_be_harvested_in_same_step(self):
         with Workdir() as w:
@@ -101,8 +107,12 @@ class Harvest(unittest.TestCase):
             self.assertEqual([e["name"] for e in named_events], ["gather", "gather_end"])
             self.assertEqual(named_events[-1]["data"]["reason"], "time")
             with open(w.path("inventory.json"), encoding="utf-8") as f:
-                self.assertEqual(json.load(f), {"items": {"bong_sung": 1}})
-            self.assertEqual(named_events[-1]["data"]["inventory"], {"items": {"bong_sung": 1}})
+                file_items = json.load(f)["items"]
+            event_items = named_events[-1]["data"]["inventory"]["items"]
+            self.assertEqual([(it["id"], it["kind"]) for it in file_items], [("I1", "bong_sung")])
+            self.assertEqual([(it["id"], it["kind"]) for it in event_items], [("I1", "bong_sung")])
+            self.assertEqual(file_items[0]["fresh"], 100)
+            self.assertEqual(event_items[0]["fresh"], 100)
 
 
 class Catch(unittest.TestCase):
@@ -118,7 +128,7 @@ class Catch(unittest.TestCase):
             self.assertEqual(events(rows, "fish_caught")[0]["data"],
                              {"fish_id": "F2", "kind": "ca_linh", "yield": 3})
             snap = snapshot_at(rows, 1)
-            self.assertEqual(snap["hold"], ["ca_linh"] * 3)
+            self.assertEqual(snap["hold"], items("ca_linh", "ca_linh", "ca_linh"))
             self.assertEqual([f["id"] for f in snap["fish"]], ["F10"])
             self.assertEqual(snap["player"]["catch_cd_ticks"], 30)
 

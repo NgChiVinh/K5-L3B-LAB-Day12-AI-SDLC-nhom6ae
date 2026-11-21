@@ -6,7 +6,7 @@ Test hộp đen qua headless_cmd. Chạy: PYTHONPATH=tests:. python3 -m unittest
 import json
 import unittest
 
-from helpers import Workdir, events, frames, read_jsonl, run_headless, snapshots, write_json
+from helpers import Workdir, events, frames, kinds_of, read_jsonl, run_headless, snapshots, write_json
 
 OXY_MAX = 30 * 60  # oxygen_max_s × 60
 
@@ -104,14 +104,19 @@ class Faint(unittest.TestCase):
             names = [r["name"] for r in events(rows)]
             self.assertEqual(names, ["choke", "faint", "gather_end"])
             faint = events(rows, "faint")[0]
-            self.assertEqual(faint["data"], {"cause": "choke", "lost": ["ca_linh", "bong_sung", "ca_loc"], "hp": 0})
+            self.assertEqual(faint["data"]["cause"], "choke")
+            self.assertEqual(faint["data"]["hp"], 0)
+            self.assertEqual(kinds_of(faint["data"]["lost"]), ["ca_linh", "bong_sung", "ca_loc"])
+            self.assertEqual([it["id"] for it in faint["data"]["lost"]], ["I3", "I2", "I1"])
+            for it in faint["data"]["lost"]:
+                self.assertAlmostEqual(it["fresh"], 100 - 1 / 120, places=3)
             end = events(rows, "gather_end")[0]
-            self.assertEqual(end["data"], {"reason": "fainted", "inventory": {"items": {}}})
+            self.assertEqual(end["data"], {"reason": "fainted", "inventory": {"items": []}})
             last = snapshots(rows)[-1]
             self.assertEqual((last["tick"], last["hold"], last["player"]["hp"]), (1, [], 0))
             self.assertEqual(rows[-1]["reason"], "fainted")
             with open(w.path("inv.json"), encoding="utf-8") as f:
-                self.assertEqual(json.load(f), {"items": {}})
+                self.assertEqual(json.load(f), {"items": []})
 
     def test_ngat_dung_buoc_bo_qua_interact(self):
         """Máu 0 thì dừng bước: interact trong bến ở cùng bước không cho docked."""
