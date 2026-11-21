@@ -3,11 +3,11 @@
   "team": "nhom6ae",
   "team_size": 6,
   "build_cmd": "true",
-  "run_cmd": "python3 -m chonoi.live --mode gather",
-  "headless_cmd": "python3 -m chonoi.headless",
-  "bench_cmd": "python3 -m chonoi.bench",
-  "soak_cmd": "python3 -m chonoi.soak",
-  "extensions": [],
+  "run_cmd": "python -m chonoi.live --mode gather",
+  "headless_cmd": "python -m chonoi.headless",
+  "bench_cmd": "python -m chonoi.bench",
+  "soak_cmd": "python -m chonoi.soak",
+  "extensions": ["leaderboard"],
   "tuning": {
     "tick_hz": 60,
     "gather": {
