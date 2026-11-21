@@ -1,24 +1,61 @@
 # Day 12 — AI SDLC: Quán Ăn Chợ Nổi
 
-## Nhóm nhom6ae — chạy game (macOS / Linux, Python 3, không cần cài thêm)
+## Nhóm nhom6ae — Quán Ăn Chợ Nổi v1.0.0 (Contract v1.3)
+
+### Yêu cầu môi trường
+- **Python 3.9+** (chỉ dùng thư viện chuẩn, không cần `pip install`).
+- **Trình duyệt web** (Chrome / Firefox / Safari / Edge) cho chế độ chơi có giao diện (`chonoi.live`).
+- **Node.js** *(tùy chọn)* — chỉ cần nếu chạy công cụ kiểm HUD `tools/hud_check.py`.
+
+### Chạy game từ clone sạch (≤ 3 lệnh, macOS / Linux)
 
 ```bash
 git clone https://github.com/NgChiVinh/K5-L3B-LAB-Day12-AI-SDLC-nhom6ae.git && cd K5-L3B-LAB-Day12-AI-SDLC-nhom6ae
-python3 -m chonoi.live --mode gather --inventory-out /tmp/kho.json     # buổi sáng: mở http://127.0.0.1:8000/
-python3 -m chonoi.live --mode quan --inventory /tmp/kho.json           # buổi tối (sau khi về bến): nạp kho buổi sáng
+python3 -m chonoi.live --mode day --days 5         # mở http://127.0.0.1:8000/ chơi trọn vòng 5 Ngày (gather -> quan -> shop)
 ```
 
-- **Điều khiển:** WASD / phím mũi tên = bơi / đi · **E** = cập bến, hái (buổi sáng) · nấu, bưng, phục vụ (buổi tối) · **Space** = bắt cá · **R** = chơi lại.
-- **Buổi sáng:** lặn bắt cá (Space, dưới nước), nổi lên hái bông súng / điên điển (E, mặt nước); oxy giảm khi lặn, hết oxy thì ngạt mất Máu, hết Máu thì ngất và mất cả giỏ. Về bến bấm E (hoặc hết giờ) để mang giỏ về kho.
-- **Buổi tối:** khách gọi món nấu được từ kho và giữ chỗ nguyên liệu. Ra bếp B1 bấm E để nấu → chín thì E để bưng → mang tới bàn T1 bấm E để phục vụ trước khi khách hết kiên nhẫn. Khách ăn xong trả tiền; phục vụ khi còn ≥ 50% kiên nhẫn thì có boa (+uy tín); khách bỏ đi thì −0.5 uy tín.
-- **Điểm:** `earned + 100 × floor(reputation)` (tiền thu cả lượt, nghìn đồng, cộng 100 cho mỗi điểm uy tín nguyên).
-- **Test (1 lệnh):** `PYTHONPATH=tests:. python3 -m unittest discover -s tests -v`
-- **Headless (Test Contract):** `python3 -m chonoi.headless --mode gather|quan --seed 1 --ticks 600 --out out.jsonl`
-- Windows: dùng `python`, đặt `PYTHONIOENCODING=utf-8`, test dùng `PYTHONPATH="tests;."` (xem `AGENTS.md`).
-- Nhóm, vai, thỏa thuận: [`TEAM.md`](TEAM.md) · đề: [`docs/prd/`](docs/prd/) · bằng chứng: [`docs/verification/`](docs/verification/), [`docs/proof/`](docs/proof/).
+Hoặc chạy riêng 2 buổi nối qua file kho cá thể (Contract v1.2/v1.3):
+```bash
+python3 -m chonoi.live --mode gather --inventory-out /tmp/kho.json
+python3 -m chonoi.live --mode quan --inventory /tmp/kho.json
+```
+
+### Điều khiển & luật chơi
+- **Điều khiển:** `WASD` / phím mũi tên = bơi / đi · **`E`** = cập bến, hái (buổi sáng) · nấu, bưng, phục vụ (buổi tối) · **`Space`** = bắt cá · **`Esc` / `P`** = tạm dừng (pause) · **`R`** = chơi lại · trong Shop: bấm nút mua nâng cấp (`oxygen` / `hp`) và đóng Shop (`shop_done`).
+- **Buổi sáng (`gather`):** lặn bắt cá (`Space`, dưới nước), nổi lên hái bông điên điển / bông súng / kèo nèo (`E`, mặt nước); tránh Cá Sấu Năm Chèo (M1 từ Ngày 1, M2 từ Ngày 3); oxy cạn thì ngạt mất Máu, hết Máu thì ngất và mất giỏ. Mỗi nguyên liệu là một cá thể `{id, kind, fresh}` hao `0.5/s` trong giỏ; `< 30` là ươn (không dùng nấu được).
+- **Buổi tối (`quan`):** 2 bếp (`B1`, `B2`), 4 bàn (`T1`–`T4`), 6 món; kho hao `0.25/s` kể cả hàng giữ chỗ. Nấu trừ đúng cá thể giữ và chốt giá `floor(giá niêm yết × fresh TB / 100)`; giao khi kiên nhẫn ≥ 50% có boa `floor(giá chốt × 0.2)` (+0.2 uy tín); khách hết kiên nhẫn −0.5 uy tín.
+- **Shop cuối ngày (`shop`):** mua nâng cấp Bình oxy (cấp 1: 200 → 45 s; cấp 2: 400 → 60 s) và Áo phao (cấp 1: 250 → 4 Máu; cấp 2: 500 → 5 Máu), trừ vào `money`, giữ nguyên `earned`, có hiệu lực từ Ngày kế tiếp.
+- **Điểm:** `earned + 100 × floor(reputation)`.
+
+### Các lệnh kiểm thử, headless, benchmark, soak & đóng gói
+- **Test toàn bộ (1 lệnh):**
+  ```bash
+  PYTHONPATH=tests:. python3 -m unittest discover -s tests -v
+  ```
+- **Headless (Test Contract v1.3):**
+  ```bash
+  python3 -m chonoi.headless --mode gather|quan|day --seed 1 --ticks 600 --out out.jsonl
+  ```
+- **Benchmark có render (1280×720, làm nóng 3 s, đo 30 s):**
+  ```bash
+  python3 -m chonoi.bench --seed 42 --duration 30 --out bench.json
+  ```
+- **Soak headless (10 Ngày liên tiếp):**
+  ```bash
+  python3 -m chonoi.soak --seed 7 --days 10 --out soak.json
+  ```
+- **Đóng gói bản phát hành (tạo `.tar.gz` và `.zip` trong `dist/`):**
+  ```bash
+  python3 tools/package_release.py --version v1.0.0
+  ```
+- **Windows:** dùng `python`, đặt `PYTHONIOENCODING=utf-8`, test dùng `PYTHONPATH="tests;."` (xem [`AGENTS.md`](AGENTS.md)).
+- Nhóm, vai, thỏa thuận: [`TEAM.md`](TEAM.md) · đề: [`docs/prd/`](docs/prd/) · bằng chứng: [`docs/verification/`](docs/verification/), [`docs/proof/`](docs/proof/) · thay đổi: [`CHANGELOG.md`](CHANGELOG.md) · bản quyền: [`LICENSE`](LICENSE), [`CREDITS.md`](CREDITS.md).
+
+### Mở rộng đã làm
+- **Cháy món (`burn`)** — khai trong `extensions` của [`game.contract.json`](game.contract.json) với `quan.burn_s: 20` (1200 tick). Món chín trên bếp đúng `1200` tick vẫn bưng được; từ `1201` tick trở đi bị cháy: mất món, bếp `idle` ngay, thử giữ lại nguyên liệu tươi cho đơn (`reserved` hoặc `unfulfillable`) và phát `dish_burnt`. Kiểm chứng bằng test hộp đen trong [`tests/test_p3_quan_fresh_burn.py`](tests/test_p3_quan_fresh_burn.py) (`PYTHONPATH=tests:. python3 -m unittest tests.test_p3_quan_fresh_burn -v`).
 
 ### Sáng tạo của nhóm
-- Phase 1: chưa thêm phần sáng tạo — làm lõi đúng trước (HUD có tên món tiếng Việt và kho khả dụng là phần hiển thị bắt buộc, không đổi luật).
+- Ưu tiên hoàn thiện lõi và mở rộng đúng Test Contract; không thêm phần sáng tạo ngoài contract vào headless để bảo toàn tính tất định.
 
 ---
 

@@ -42,7 +42,7 @@ def load_contract(path=DEFAULT_PATH) -> dict:
         raise BadInput("tuning.freshness phải có initial, gather_decay_per_s, quan_decay_per_s, spoiled_below hợp lệ")
     if not isinstance(c.get("extensions", []), list):
         raise BadInput("extensions phải là mảng mã mở rộng")
-    validate_tuning(c.get("tuning"))
+    validate_tuning(c.get("tuning"), extensions=c.get("extensions", []))
     return c
 
 
@@ -239,7 +239,7 @@ def _validate_shop(shop):
             _between(f"shop.upgrades.{kind}.{e['level']}.{field}", e.get(field), lo, hi)
 
 
-def validate_tuning(t):
+def validate_tuning(t, extensions=()):
     if not isinstance(t, dict):
         raise BadInput("thiếu khối tuning")
     g, q, menu = t.get("gather"), t.get("quan"), t.get("menu")
@@ -264,8 +264,10 @@ def validate_tuning(t):
         raise BadInput("quan.tip_min_patience_ratio phải thuộc (0, 1]")
     if not (_num(q.get("tip_reputation")) and q["tip_reputation"] > 0):
         raise BadInput("quan.tip_reputation phải > 0")
-    if q.get("burn_s") is not None:
-        raise BadInput("burn_s phải là null ở Phase 1")
+    if "burn" in extensions:
+        _between("quan.burn_s", q.get("burn_s"), 0.1, 600)
+    elif q.get("burn_s") is not None:
+        raise BadInput("burn_s phải là null khi chưa bật mở rộng burn")
     for name, need in (("stoves", ["B1", "B2"]), ("tables", ["T1", "T2", "T3", "T4"])):
         items = q.get(name)
         if not isinstance(items, list) or [e.get("id") for e in items] != need:
