@@ -21,3 +21,14 @@
 - Giờ standup giữa phase: giữa mỗi phase, mỗi người 1 dòng trong `docs/standup.md`.
 - Cách đọc code của nhau: mỗi người đọc lát của người dự phòng mình trước khi gộp; QA lead chạy test hộp đen.
 - Cách làm việc với Git: nhánh ngắn theo lát rồi gộp vào `main` (pull --rebase, chạy test trước khi push); chỉ Integrator gắn tag `phase-n`.
+
+## Việc theo phase (chi tiết, phụ thuộc, AC: `docs/plan/phase-n.md`; đề: `docs/prd/phase-n.md`)
+
+| Thành viên | Phase 1 ([plan](docs/plan/phase-1.md)) | Phase 2 ([plan](docs/plan/phase-2.md) · [đề](docs/prd/phase-2.md)) |
+|---|---|---|
+| NgChiVinh | Lát 1 gather, hợp đồng, harness, tích hợp | **#0 khung v1.1 (push trước)** + **#4 `--mode day` + pause**, tích hợp, tag |
+| TrungHieuPh | Lát 2 gather, PO | **#1 số chuẩn gather + cá bơi/sinh**, PO (hỏi Anh Năm) |
+| 22520160 | Lát 3 khách + kiểm scenario quán | **#2 Cá Sấu, `monster_hit`, ngất do quái** (`chonoi/sim/monsters.py`) |
+| HoangQuan23112004 | Lát 4 bếp, phục vụ, tiền | **#3 2 bếp/4 bàn/6 món, lọc menu theo kế hoạch + Shop** (`chonoi/sim/shop.py`) |
+| truclamld | HUD, README, Scrum | **#5 menu, các màn hình ngày, pause, HUD v1.1**, retro nhanh |
+| khoa-asta | QA, verification | **#6 regression P1 số chuẩn, smoke phút 20, smoke day, verification P2** |

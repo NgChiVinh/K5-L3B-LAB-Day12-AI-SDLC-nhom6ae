@@ -13,6 +13,7 @@
 ## Đề bài (đọc trước khi code)
 - Phase 1: [`docs/prd/phase-1.md`](docs/prd/phase-1.md) — PRD-0 + Test Contract v1.0 (luật từng bước ở mục F, sự kiện ở mục E, scenario ở mục D).
 - Kế hoạch / chia lát: [`docs/plan/phase-1.md`](docs/plan/phase-1.md), người làm ở [`TEAM.md`](TEAM.md).
+- **Phase 2 (đang làm):** [`docs/prd/phase-2.md`](docs/prd/phase-2.md) — TICKET-02 + Test Contract v1.1 (số chuẩn mục 1, vòng ngày/Shop mục 2, thứ tự xử lý mục 4.5). Kế hoạch: [`docs/plan/phase-2.md`](docs/plan/phase-2.md).
 
 ## Cấu trúc & quy ước
 - (Starter Python là TÙY CHỌN; nhóm có thể dùng ngôn ngữ khác nếu giữ Test Contract.) Khung do giảng viên cấp: `chonoi/{headless,inputs,scenario,contract,rng,ids,jsonl,inventory,runner,live}.py` và `chonoi/web/`. Hạn chế sửa; nếu phải sửa thì báo cả nhóm và ghi lại lý do.
