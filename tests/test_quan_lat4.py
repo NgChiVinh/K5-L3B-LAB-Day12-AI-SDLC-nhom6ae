@@ -1,5 +1,8 @@
 """Lát 4 (quan): bếp, bưng, phục vụ, tiền, boa, uy tín, đóng ca — PRD-0 mục F, Quán bước 1–4.
 
+Cập nhật fixture sang Contract v1.2 (TICKET-03): stock/cook_started.items là mảng cá thể,
+reserved là mảng id cá thể, giá chốt theo độ tươi trung bình sau 1 tick hao (100 - 1/240).
+
 Test hộp đen qua headless_cmd. Chạy: PYTHONPATH=tests:. python3 -m unittest tests.test_quan_lat4 -v
 """
 
@@ -12,6 +15,15 @@ PATIENCE_MAX = 60 * 60  # patience_s × 60
 EAT_MAX = 10 * 60       # eat_s × 60
 STOVE_POS = [2, 8]      # B1 trong game.contract.json
 TABLE_POS = [9, 2]      # T1 trong game.contract.json
+
+
+def make_stock(counts, fresh=100):
+    items, idx = [], 1
+    for kind, qty in counts.items():
+        for _ in range(qty):
+            items.append({"id": f"I{idx}", "kind": kind, "fresh": fresh})
+            idx += 1
+    return items
 
 
 def run_quan(w, block, ticks, inputs=None):
@@ -33,38 +45,49 @@ def snap_at(rows, tick):
 
 class StoveCookAndReady(unittest.TestCase):
     def test_cook_started_consumes_reserved_and_sorts_items(self):
-        """Bếp idle lấy đơn reserved, trừ stock, xóa reserved, chốt giá, items sắp theo kind."""
+        """Bếp idle lấy đơn reserved, trừ đúng id cá thể khỏi stock, chốt giá theo tươi, items sắp kind rồi id."""
         with Workdir() as w:
+            stock = [
+                {"id": "I1", "kind": "ca_linh", "fresh": 100},
+                {"id": "I2", "kind": "ca_linh", "fresh": 100},
+                {"id": "I3", "kind": "ca_linh", "fresh": 100},
+                {"id": "I4", "kind": "bong_dien_dien", "fresh": 100},
+                {"id": "I5", "kind": "ca_loc", "fresh": 100},
+            ]
             block = {
                 "player": {"pos": STOVE_POS},
-                "stock": {"ca_linh": 3, "bong_dien_dien": 1, "ca_loc": 1},
+                "stock": stock,
                 "customers": [{
                     "id": "C1", "table_id": "T1", "dish_id": "lau_ca_linh_dien_dien",
                     "order_tick": 10, "state": "waiting", "order_status": "reserved",
-                    "reserved": {"ca_linh": 3, "bong_dien_dien": 1},
+                    "reserved": ["I1", "I2", "I3", "I4"],
                 }],
             }
             rows = run_quan(w, block, 1, [{"tick": 0, "interact": True}])
             ev = events(rows, "cook_started")
             self.assertEqual(len(ev), 1)
             self.assertEqual(ev[0]["tick"], 1)
-            self.assertEqual(ev[0]["data"], {
-                "stove_id": "B1", "order_id": "C1", "dish_id": "lau_ca_linh_dien_dien",
-                "items": ["bong_dien_dien", "ca_linh", "ca_linh", "ca_linh"],
-                "base_price": 120,
-            })
+            # Sau 1 tick hao (100 - 1/240), floor(120 * 23999 / 24000) = 119
+            self.assertEqual(ev[0]["data"]["stove_id"], "B1")
+            self.assertEqual(ev[0]["data"]["order_id"], "C1")
+            self.assertEqual(ev[0]["data"]["dish_id"], "lau_ca_linh_dien_dien")
+            self.assertEqual(ev[0]["data"]["base_price"], 119)
+            self.assertEqual(
+                [(it["kind"], it["id"]) for it in ev[0]["data"]["items"]],
+                [("bong_dien_dien", "I4"), ("ca_linh", "I1"), ("ca_linh", "I2"), ("ca_linh", "I3")],
+            )
             s1 = snap_at(rows, 1)
-            self.assertEqual(s1["stock"], {"ca_loc": 1})
+            self.assertEqual([it["id"] for it in s1["stock"]], ["I5"])
             c1 = s1["customers"][0]
             self.assertEqual(c1["order_status"], "assigned")
-            self.assertEqual(c1["reserved"], {})
-            self.assertEqual(c1["base_price"], 120)
+            self.assertEqual(c1["reserved"], [])
+            self.assertEqual(c1["base_price"], 119)
             st = s1["stoves"][0]
             self.assertEqual(st["state"], "cooking")
             self.assertEqual(st["cook_ticks_left"], 10 * 60)
             self.assertEqual(st["ready_ticks"], 0)
             self.assertEqual(st["dish"], {
-                "order_id": "C1", "dish_id": "lau_ca_linh_dien_dien", "base_price": 120,
+                "order_id": "C1", "dish_id": "lau_ca_linh_dien_dien", "base_price": 119,
             })
 
     def test_dish_ready_and_ready_ticks_increment(self):
@@ -75,7 +98,7 @@ class StoveCookAndReady(unittest.TestCase):
                 "stoves": [{"id": "B1", "state": "cooking", "dish": dish, "cook_ticks_left": 2}],
                 "customers": [{
                     "id": "C1", "table_id": "T1", "dish_id": "goi_bong_sung",
-                    "state": "waiting", "order_status": "assigned", "reserved": {}, "base_price": 40,
+                    "state": "waiting", "order_status": "assigned", "reserved": [], "base_price": 40,
                 }],
             }
             rows = run_quan(w, block, 4)
@@ -101,7 +124,7 @@ class PickAndInteractPriority(unittest.TestCase):
                 "stoves": [{"id": "B1", "state": "ready", "dish": dish, "ready_ticks": 5}],
                 "customers": [{
                     "id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui",
-                    "state": "waiting", "order_status": "assigned", "reserved": {}, "base_price": 60,
+                    "state": "waiting", "order_status": "assigned", "reserved": [], "base_price": 60,
                 }],
             }
             rows = run_quan(w, block, 1, [{"tick": 0, "interact": True}])
@@ -115,32 +138,32 @@ class PickAndInteractPriority(unittest.TestCase):
             self.assertIsNone(s1["stoves"][0]["dish"])
             self.assertEqual(s1["stoves"][0]["ready_ticks"], 0)
 
-        # Tay cầm món của đơn C2 không có khách = "liên kết thiếu" (PRD mục D) -> fixture mâu thuẫn, mã 2.
-        # Với 1 bàn chỉ có 1 khách nên "tay đầy + bếp ready" không dựng được bằng fixture hợp lệ ở P1.
-        with Workdir() as w:
-            other = {"order_id": "C2", "dish_id": "goi_bong_sung", "base_price": 40}
-            block = {
-                "random_customers": False,
-                "player": {"pos": STOVE_POS},
-                "hand": other,
-                "stoves": [{"id": "B1", "state": "ready", "dish": dish, "ready_ticks": 5}],
-                "customers": [{
-                    "id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui",
-                    "state": "waiting", "order_status": "assigned", "reserved": {}, "base_price": 60,
-                }],
-            }
-            sc = write_json(w.path("sc.json"), {"quan": block})
-            code, _ = run_headless("--mode", "quan", "--seed", "1", "--ticks", "1", "--scenario", sc,
-                                   "--out", w.path("o.jsonl"))
-            self.assertEqual(code, 2)
+        # Tay đã đầy (cầm món của khách C2) -> không bưng thêm được
+        from chonoi.contract import load_contract
+        from chonoi.ids import IdAllocator
+        from chonoi.inputs import InputState
+        from chonoi.rng import Streams
+        from chonoi.sim.quan import QuanSim
+        tuning = load_contract()["tuning"]
+        other = {"order_id": "C2", "dish_id": "goi_bong_sung", "base_price": 40}
+        sim = QuanSim(tuning, {
+            "player": {"pos": STOVE_POS},
+            "hand": other,
+            "stoves": [{"id": "B1", "state": "ready", "dish": dish, "ready_ticks": 5}],
+            "customers": [{
+                "id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui",
+                "state": "waiting", "order_status": "assigned", "reserved": [], "base_price": 60,
+            }],
+            "random_customers": False,
+        }, Streams(1), IdAllocator())
+        ev_full = sim.step(InputState((0.0, 0.0), {"interact": True}, {"interact"}))
+        self.assertEqual([e for e in ev_full if e[0] == "dish_picked"], [])
+        self.assertEqual(sim.hand, other)
+        self.assertEqual(sim.stoves[0]["state"], "ready")
 
     def test_interact_prefers_stove_over_table_on_equal_distance_and_skips_if_unusable(self):
         """Cùng khoảng cách: chọn bếp trước bàn. Nếu đối tượng gần nhất không tương tác được thì bỏ lượt."""
         dish = {"order_id": "C1", "dish_id": "ca_loc_nuong_trui", "base_price": 60}
-        # Đặt bếp B1 ở [5, 5], bàn T1 ở [7, 5], người chơi ở [6, 5] (cùng cách 1.0 m <= 1.5 m).
-        # Bếp idle nhưng không còn đơn reserved (C1 đã assigned) -> không tương tác được; bàn lại có thể
-        # phục vụ -> phải chọn bếp và BỎ LƯỢT. (Trước dùng bếp cooking đơn C9 không có khách = fixture
-        # mâu thuẫn theo PRD mục D, scenario.py trả mã 2.)
         with Workdir() as w:
             block = {
                 "player": {"pos": [6, 5]},
@@ -149,7 +172,7 @@ class PickAndInteractPriority(unittest.TestCase):
                 "tables": [{"id": "T1", "pos": [7, 5]}],
                 "customers": [{
                     "id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui",
-                    "state": "waiting", "order_status": "assigned", "reserved": {}, "base_price": 60,
+                    "state": "waiting", "order_status": "assigned", "reserved": [], "base_price": 60,
                 }],
             }
             rows = run_quan(w, block, 1, [{"tick": 0, "interact": True}])
@@ -168,8 +191,8 @@ class ServeTipPayAndReputation(unittest.TestCase):
                 "reputation": 3.0,
                 "customers": [{
                     "id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui",
-                    "state": "waiting", "order_status": "assigned", "reserved": {},
-                    "base_price": 60, "patience_ticks_left": 1801,  # sau bước 1 còn đúng 1800
+                    "state": "waiting", "order_status": "assigned", "reserved": [],
+                    "base_price": 60, "patience_ticks_left": 1801,
                 }],
             }
             rows = run_quan(w, block, EAT_MAX + 2, [{"tick": 0, "interact": True}])
@@ -211,7 +234,7 @@ class ServeTipPayAndReputation(unittest.TestCase):
                     "reputation": 3.0,
                     "customers": [{
                         "id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui",
-                        "state": "waiting", "order_status": "assigned", "reserved": {},
+                        "state": "waiting", "order_status": "assigned", "reserved": [],
                         "base_price": 60, "patience_ticks_left": start_pat,
                     }],
                 }
@@ -232,7 +255,7 @@ class ServeTipPayAndReputation(unittest.TestCase):
                 "reputation": 4.9,
                 "customers": [{
                     "id": "C1", "table_id": "T1", "dish_id": "goi_bong_sung",
-                    "state": "eating", "order_status": "served", "reserved": {},
+                    "state": "eating", "order_status": "served", "reserved": [],
                     "eat_ticks_left": 1, "base_price": 40, "tip": 8,
                 }],
             }
@@ -252,7 +275,7 @@ class ClosingShift(unittest.TestCase):
                 "reputation": 3.0,
                 "customers": [{
                     "id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui",
-                    "state": "waiting", "order_status": "assigned", "reserved": {},
+                    "state": "waiting", "order_status": "assigned", "reserved": [],
                     "base_price": 60, "patience_ticks_left": PATIENCE_MAX,
                 }],
             }
@@ -275,12 +298,12 @@ class ClosingShift(unittest.TestCase):
             block = {
                 "time_left_ticks": 1,
                 "reputation": 3.0,
-                "stock": {},
+                "stock": [],
                 "stoves": [{"id": "B1", "state": "cooking", "dish": dish, "cook_ticks_left": 100}],
                 "customers": [{
                     "id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui",
-                    "state": "waiting", "order_status": "assigned", "reserved": {},
-                    "base_price": 60, "patience_ticks_left": 1,  # đúng tick hết ca cũng là closing, không trừ uy tín
+                    "state": "waiting", "order_status": "assigned", "reserved": [],
+                    "base_price": 60, "patience_ticks_left": 1,
                 }],
             }
             rows = run_quan(w, block, 10)
@@ -294,27 +317,23 @@ class ClosingShift(unittest.TestCase):
             self.assertEqual(last["customers"], [])
             self.assertEqual(last["stoves"][0]["state"], "idle")
             self.assertIsNone(last["stoves"][0]["dish"])
-            self.assertEqual(last["stock"], {})
+            self.assertEqual(last["stock"], [])
 
 
 class FullCycleEndToEnd(unittest.TestCase):
     def test_full_cook_pick_serve_pay_close(self):
         """Vòng đầy đủ: nấu (B1) -> chín -> bưng -> đi tới T1 -> phục vụ -> ăn xong trả tiền -> hết ca."""
         with Workdir() as w:
-            # goi_bong_sung: cook_s=4 (240 ticks), price=40, tip=8
+            # goi_bong_sung: cook_s=4 (240 ticks), niêm yết 40; sau 1 tick hao fresh = 100 - 1/240 ->
+            # base_price = floor(40 * 23999 / 24000) = 39, tip = floor(39 * 0.2) = 7 -> amount = 46
             block = {
                 "player": {"pos": STOVE_POS},
-                "stock": {"bong_sung": 2},
+                "stock": make_stock({"bong_sung": 2}),
                 "time_left_ticks": 1200,
                 "customers": [{
                     "id": "C1", "table_id": "T1", "dish_id": "goi_bong_sung",
                 }],
             }
-            # Tick 0: interact ở B1 -> cook_started (tick 1), cook_ticks_left=240
-            # Tick 241: dish_ready (sau 240 tick nấu từ tick 1 -> tick 241)
-            # Tick 241: interact ở B1 -> dish_picked (tick 242), rồi đi tới T1 [9,2] từ [2,8]
-            # khoảng cách dx=7, dz=-6 -> dist=9.22m, walk_speed=4m/s -> ~2.3s (~145 tick)
-            # Thay vào đó, đi từ [2,8] sang [9,2] bằng vector (1, -6/7) trong 160 tick -> tới [9,2]
             inp = [
                 {"tick": 0, "interact": True},
                 {"tick": 1, "interact": False},
@@ -326,10 +345,10 @@ class FullCycleEndToEnd(unittest.TestCase):
             rows = run_quan(w, block, 1300, inp)
             names = [e["name"] for e in events(rows)]
             self.assertEqual(names, ["cook_started", "dish_ready", "dish_picked", "served", "paid", "quan_end"])
-            self.assertEqual(events(rows, "paid")[0]["data"]["amount"], 48)
-            self.assertEqual(rows[-1]["earned"], 48)
+            self.assertEqual(events(rows, "paid")[0]["data"]["amount"], 46)
+            self.assertEqual(rows[-1]["earned"], 46)
             self.assertAlmostEqual(rows[-1]["reputation"], 3.2, places=3)
-            self.assertEqual(rows[-1]["score"], 348)
+            self.assertEqual(rows[-1]["score"], 346)
 
 
 if __name__ == "__main__":
