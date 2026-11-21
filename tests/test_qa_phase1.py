@@ -75,8 +75,7 @@ class QuanContract(unittest.TestCase):
             scenario = write_json(w.path("scenario.json"), {
                 "quan": {
                     "stock": {"bong_sung": 2},
-                    "random_customers": False,
-                    "time_left_ticks": 121,
+                    "time_left_ticks": 122,
                 }
             })
             code, err = run_headless(
@@ -112,12 +111,19 @@ class QuanContract(unittest.TestCase):
                         "base_price": None,
                         "tip": None,
                     }],
-                    "time_left_ticks": 30,
+                    "time_left_ticks": 1200,
                 }
             })
-            inputs = write_json(w.path("inputs.json"), frames({"tick": 0, "interact": True}) )
+            inputs = write_json(w.path("inputs.json"), frames(
+                {"tick": 0, "interact": True},
+                {"tick": 1, "interact": False},
+                {"tick": 241, "interact": True},
+                {"tick": 242, "interact": False, "move": [1, -0.857]},
+                {"tick": 385, "move": [0, 0], "interact": True},
+                {"tick": 386, "interact": False},
+            ))
             code, err = run_headless(
-                "--mode", "quan", "--seed", "42", "--ticks", "30",
+                "--mode", "quan", "--seed", "42", "--ticks", "1300",
                 "--scenario", scenario, "--inputs", inputs, "--out", w.path("quan.jsonl"),
             )
             self.assertEqual(code, 0, err)
