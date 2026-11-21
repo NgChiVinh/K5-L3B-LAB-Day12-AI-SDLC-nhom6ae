@@ -1,13 +1,13 @@
-"""QA regression P1 under the Phase 2 v1.1 standard data."""
+"""Phase 2 QA regression fixtures migrated to Contract v1.2."""
 
 import json
 import unittest
 
-from helpers import Workdir, events, frames, read_jsonl, run_headless, snapshots, write_json
+from helpers import Workdir, close, counts, events, frames, items, kinds_of, read_jsonl, run_headless, snapshots, write_json
 
 
 class Phase2P1Regression(unittest.TestCase):
-    def test_default_gather_has_v11_fish_and_node_counts(self):
+    def test_default_gather_has_expected_fish_and_node_counts(self):
         with Workdir() as w:
             code, err = run_headless(
                 "--mode", "gather", "--seed", "1", "--ticks", "0",
@@ -25,7 +25,7 @@ class Phase2P1Regression(unittest.TestCase):
                 {"N5": "keo_neo", "N6": "keo_neo"},
             )
 
-    def test_ca_keo_fixture_uses_v11_yield(self):
+    def test_ca_keo_fixture_uses_contract_yield(self):
         with Workdir() as w:
             scenario = write_json(w.path("scenario.json"), {
                 "gather": {
@@ -46,9 +46,12 @@ class Phase2P1Regression(unittest.TestCase):
                 events(rows, "fish_caught")[0]["data"],
                 {"fish_id": "F1", "kind": "ca_keo", "yield": 2},
             )
-            self.assertEqual(snapshots(rows)[-1]["hold"], ["ca_keo", "ca_keo"])
+            hold = snapshots(rows)[-1]["hold"]
+            self.assertEqual(kinds_of(hold), ["ca_keo", "ca_keo"])
+            self.assertEqual([item["id"] for item in hold], ["I1", "I2"])
+            self.assertTrue(all(item["fresh"] == 100 for item in hold))
 
-    def test_quan_v11_defaults_have_expected_entity_and_menu_counts(self):
+    def test_quan_defaults_have_expected_entity_and_menu_counts(self):
         with Workdir() as w:
             code, err = run_headless(
                 "--mode", "quan", "--seed", "1", "--ticks", "0",
@@ -62,17 +65,12 @@ class Phase2P1Regression(unittest.TestCase):
                 contract = json.load(f)
             self.assertEqual(len(contract["tuning"]["menu"]), 6)
 
-    def test_inventory_handoff_supports_v11_kinds(self):
-        expected = {"items": {
-            "bong_sung": 2,
-            "ca_keo": 1,
-            "ca_loc": 1,
-            "keo_neo": 1,
-        }}
+    def test_inventory_handoff_supports_contract_kinds(self):
+        hand = items("ca_loc", "bong_sung", "bong_sung", "ca_keo", "keo_neo")
         with Workdir() as w:
             scenario = write_json(w.path("gather.json"), {
                 "gather": {
-                    "hold": ["ca_loc", "bong_sung", "bong_sung", "ca_keo", "keo_neo"],
+                    "hold": hand,
                     "random_fish": False,
                 }
             })
@@ -85,16 +83,27 @@ class Phase2P1Regression(unittest.TestCase):
             )
             self.assertEqual(code, 0, err)
             gather_rows = read_jsonl(w.path("gather.jsonl"))
-            self.assertEqual(events(gather_rows, "gather_end")[0]["data"]["inventory"], expected)
+            handoff = events(gather_rows, "gather_end")[0]["data"]["inventory"]
             with open(inventory_path, encoding="utf-8") as f:
-                self.assertEqual(json.load(f), expected)
+                saved = json.load(f)
+            self.assertEqual(counts(saved), {"bong_sung": 2, "ca_keo": 1, "ca_loc": 1, "keo_neo": 1})
+            self.assertEqual([item["id"] for item in saved["items"]], [f"I{i}" for i in range(1, 6)])
+            self.assertEqual(kinds_of(saved["items"]), kinds_of(hand))
+            self.assertEqual([item["id"] for item in handoff["items"]], [f"I{i}" for i in range(1, 6)])
+            self.assertEqual(kinds_of(handoff["items"]), kinds_of(hand))
+            for item in saved["items"] + handoff["items"]:
+                self.assertTrue(close(item["fresh"], 100 - 1 / 120, 0.01), item)
 
             code, err = run_headless(
                 "--mode", "quan", "--seed", "42", "--inventory", inventory_path,
                 "--ticks", "0", "--out", w.path("quan.jsonl"),
             )
             self.assertEqual(code, 0, err)
-            self.assertEqual(snapshots(read_jsonl(w.path("quan.jsonl")))[0]["stock"], expected["items"])
+            stock = snapshots(read_jsonl(w.path("quan.jsonl")))[0]["stock"]
+            self.assertEqual([item["id"] for item in stock], [f"I{i}" for i in range(1, 6)])
+            self.assertEqual(kinds_of(stock), kinds_of(hand))
+            for item in stock:
+                self.assertTrue(close(item["fresh"], 100 - 1 / 120, 0.01), item)
 
 
 if __name__ == "__main__":
