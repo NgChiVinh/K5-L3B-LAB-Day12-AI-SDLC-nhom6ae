@@ -4,8 +4,8 @@
 - Khung starter Python (`chonoi/`) và đề bài **Quán Ăn Chợ Nổi** (Day 12 · AI SDLC): `VinUni-AI20k/K5-L3B-LAB-Day12-AI-SDLC`.
 
 ## Tài sản đồ họa & âm thanh
-- Toàn bộ đồ họa 2D (cảnh lặn mặt cắt sông Chín Khúc, nhà bè Má Tư, HUD, biểu tượng, chế độ tương phản cao) được nhóm `nhom6ae` tự vẽ hoàn toàn bằng **HTML5 Canvas 2D** trong `chonoi/web/index.html` và renderer phần mềm trong `chonoi/bench.py`.
-- Không sử dụng hình ảnh, sprite, font hay âm thanh có bản quyền từ bên ngoài; chỉ dùng font không chân hệ thống (`system-ui`, `sans-serif`).
+- Nhóm `nhom6ae` dùng HTML5 Canvas 2D để dựng cảnh từ trạng thái mô phỏng, vẽ các hiệu ứng nước, hơi bếp, cảnh báo, biểu tượng và giao diện tương phản cao. Bản benchmark dùng renderer phần mềm trong `chonoi/bench.py`.
+- Tranh bến chợ, lòng sông, nhà bè và hai bộ hình nhân vật, vật dụng, cá và món ăn được tạo riêng bằng OpenAI ImageGen. Các tệp nằm trong `chonoi/web/` gồm `ben-cho.jpg`, `long-song.jpg`, `nha-be.jpg`, `ut-sen.png` và `ca-va-mon.png`. Chữ trên giao diện dùng phông có sẵn trên thiết bị.
 
 ## Công cụ AI đã dùng (chi tiết trong `docs/ai-usage-log.md`)
 - Claude Code (VS Code) — `NgChiVinh`

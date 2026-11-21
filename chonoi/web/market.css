@@ -1,0 +1,105 @@
+:root {
+  --cream: #fff4d8;
+  --gold: #ffd086;
+  --green: #103c36;
+  --ink: #233a31;
+  color: var(--cream);
+  font: 18px/1.45 "DM Sans", "Segoe UI", sans-serif;
+  background: #102c29;
+}
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { margin: 0 }
+button { color: inherit; font: inherit; cursor: pointer; background: none; border: 0 }
+button:focus-visible { outline: 3px solid #f89924; outline-offset: 3px }
+button:disabled { opacity: .55; cursor: wait }
+#landing {
+  min-height: 100vh; min-height: 100svh; padding: 0 clamp(24px, 6vw, 108px); display: flex; flex-direction: column;
+  background-color: #143a33;
+  background-image: linear-gradient(0deg, #062522e8, transparent 27%, transparent 80%, #182a2b7a),
+    linear-gradient(90deg, #092e2bef 0%, #143c35d4 22%, #13372d75 43%, transparent 69%), url('/ben-cho.jpg');
+  background-size: cover; background-position: center;
+}
+.mast, .dock { display: flex; align-items: center; justify-content: space-between; gap: 16px }
+.mast { min-height: 90px; border-bottom: 1px solid #fff1d24a }
+.brand { display: inline-flex; align-items: center; gap: 15px; font: bold 24px Georgia, serif }
+.bowl { width: 33px; height: 15px; background: var(--gold); border-radius: 1px 1px 22px 22px; position: relative; margin-top: 5px }
+.bowl::before, .bowl::after, .bowl i::before { content: ""; position: absolute; width: 3px; height: 8px; background: var(--gold); top: -11px; left: 10px; transform: skew(-13deg) }
+.bowl::after { left: 18px; top: -14px; height: 11px }
+.bowl i::before { left: 24px; height: 6px; top: -9px }
+.bowl i::after { content: ""; position: absolute; width: 13px; height: 3px; background: var(--gold); bottom: -4px; left: 10px }
+#help, .glass { border: 1px solid #f8e5ba91; background: #0e302dbd; border-radius: 7px }
+#help { padding: 8px 15px; display: flex; align-items: center; gap: 10px }
+#help span { border: 1.5px solid; border-radius: 50%; width: 20px; line-height: 18px; font-size: 15px; font-weight: 700 }
+.welcome { flex: 1; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 40px 0 54px }
+.place { margin: 0; color: var(--gold); display: flex; align-items: center; gap: 14px; text-transform: uppercase; font-weight: 700; letter-spacing: .17em }
+.place i { height: 2px; width: 36px; background: currentColor }
+h1, h2 { margin: 0; font-family: "Playfair Display", Georgia, serif }
+h1 { font-size: clamp(76px, 7.8vw, 145px); line-height: 1.04; letter-spacing: -.05em; margin: 15px 0; text-shadow: 0 3px 14px #04202366 }
+h1 em { color: var(--gold) }
+.story { max-width: 390px; margin: 0 0 27px; line-height: 1.55; text-wrap: pretty }
+.actions { display: flex; gap: 12px; flex-wrap: wrap }
+.actions button { min-height: 54px; padding: 10px 23px; display: inline-flex; align-items: center; justify-content: center; gap: 12px; font-weight: 650 }
+.gold { background: var(--gold); color: #2e331f; border-radius: 7px; border: 1px solid #ffdea7; box-shadow: 0 3px 0 #804e23 }
+.gold:hover { background: #ffe3ae }
+.glass:hover, #help:hover { background: #123731 }
+.book-icon { width: 20px; height: 15px; border: 1.7px solid; border-radius: 3px; background: linear-gradient(90deg, transparent 46%, currentColor 46% 53%, transparent 53%) }
+.dock { border-top: 1px solid #f8edc955; min-height: 74px }
+.dock div { display: flex; align-items: center; gap: 12px }
+.dock button { padding: 9px 0 9px 10px }
+.dock button span { margin-left: 8px }
+.beacon { width: 9px; height: 9px; border-radius: 50%; background: #a9df9b; box-shadow: 0 0 0 4px #91d48b25 }
+#game { display: flex; flex-direction: column; height: 100vh; height: 100dvh }
+.stage { min-height: 0; flex: 1; position: relative }
+#c { display: block; width: 100%; height: 100% }
+#status-layer { position: absolute; inset: 0; display: grid; place-items: center; padding: 12px; background: #052b28c9 }
+.slip { max-height: 100%; overflow: auto; width: min(570px,100%); color: var(--ink); background: #fff5dd; border: 1px solid #aa9770; border-radius: 12px; box-shadow: 0 8px 30px #001f1b66 }
+.slip header { padding: 20px 26px; background: var(--green); color: var(--cream) }
+.slip header h2 { font-size: clamp(24px,3vw,32px); color: var(--gold) }
+.slip p { margin: 0 }
+.slip header p { margin-top: 4px }
+#slip-lines { padding: 10px 26px }
+#slip-lines p { padding: 9px 0 }
+#slip-lines p + p { border-top: 1px dashed #b3a37e }
+#slip-foot { background: #f1e5c8; padding: 12px 26px }
+#farewell h2 { font-size: clamp(48px,7vw,92px); line-height: 1.05; margin-bottom: 24px }
+#return { padding: 10px 22px }
+#tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; padding: 6px; background: #10332f; border-top: 1px solid #9a9671 }
+#tools button, .keys kbd { border: 1px solid #89a396; border-radius: 5px; padding: 4px 12px }
+#tools button:hover, #tools [aria-pressed=true] { background: #35554b }
+kbd { font: inherit; font-weight: 600 }
+#tools kbd { color: #ffcf82; margin-left: 5px }
+.touch-controls { display: none; touch-action: none; user-select: none }
+@media (pointer: coarse) { .touch-controls { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; width: 100% } #tools button { min-height: 42px } }
+dialog { padding: 0; width: min(880px, calc(100vw - 28px)); max-height: 88vh; max-height: 88dvh; border: 1px solid #af9c6e; border-radius: 14px; background: #fff5dc; color: var(--ink); box-shadow: 0 20px 80px #021b1980 }
+dialog::backdrop { background: #062a27cf }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px 28px 20px; background: var(--green); color: var(--cream) }
+.sheet-head h2 { font-size: clamp(32px, 4vw, 48px); line-height: 1.18 }
+.sheet-head .place { margin-bottom: 5px }
+.close { font-size: 28px; line-height: 1; border: 1px solid #a1ad94; width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0 }
+.guide-body, #dish-list { padding: 18px 28px 26px }
+.guide-body h3 { margin: 9px 0 4px; color: #29594b }
+.guide-body p { margin: 0 0 18px }
+.keys { line-height: 2 }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; padding: 18px 28px 0 }
+.filters button { padding: 6px 12px; border: 1px solid #9a987b; border-radius: 20px }
+.filters [aria-pressed=true] { background: var(--green); color: white }
+#stock-source { margin: 12px 28px 0; color: #536052 }
+#dish-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,285px),1fr)); gap: 13px }
+.dish { border: 1px solid #c7b68d; padding: 15px; border-radius: 8px; background: #fffaf0 }
+.dish header { display: flex; align-items: center; gap: 10px }
+.dish canvas { width: 44px; height: 44px }
+.dish h3 { margin: 0; line-height: 1.22; font-family: Georgia, serif; font-size: 22px }
+.dish h3::first-letter { text-transform: uppercase }
+.dish p { margin: 7px 0 0 }
+.dish .availability { color: #825126; font-weight: bold }
+.dish .ready { color: #216448 }
+.contrast dialog, .contrast .dish, .contrast .sheet-head, .contrast #tools, .contrast .slip, .contrast .slip header, .contrast #slip-foot { color: white; background: black; border-color: white }
+.contrast .dish p, .contrast #stock-source, .contrast .guide-body h3 { color: white }
+@media (max-width: 600px) {
+  #landing { background-position: 67% center; background-image: linear-gradient(0deg,#082d2bf7 5%,#0b292acf 45%,#10292522 78%,#1529237d),url('/ben-cho.jpg') }
+  .mast { min-height: 70px } .brand { font-size: 21px } #help { padding: 7px 9px }
+  .welcome { justify-content: flex-end; padding: 78px 0 34px } h1 { font-size: clamp(64px,18vw,88px) }
+  .actions button { padding: 9px 14px } .dock { min-height: 64px }
+  .sheet-head, .guide-body, #dish-list { padding: 17px } .filters { padding: 14px 17px 0 } #stock-source { margin-left: 17px }
+}

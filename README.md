@@ -57,7 +57,12 @@ python3 -m chonoi.live --mode quan --inventory /tmp/kho.json
 - **Bảng xếp hạng cục bộ (`leaderboard`)** — khai trong `extensions`. Lưu bền vững top 10 (`chonoi/leaderboard.py`), sắp điểm giảm dần, hòa thì mục ghi trước đứng trước (kể cả sau khi mở lại). Headless `--mode day` nhận cặp `--leaderboard <store.json> --player-name <tên>`: chỉ ghi một mục khi chạy đủ 5 Ngày chuẩn, không scenario, `reason: days_complete`; thiếu một cờ trong cặp hoặc sai mode → mã 2. Xuất bảng: `python3 -m chonoi.live --mode gather --export-leaderboard out.json [--leaderboard store.json]`. Kiểm chứng: [`tests/test_leaderboard.py`](tests/test_leaderboard.py), [`tests/test_leaderboard_run_cmd.py`](tests/test_leaderboard_run_cmd.py).
 
 ### Sáng tạo của nhóm
-- Ưu tiên hoàn thiện lõi và mở rộng đúng Test Contract; không thêm phần sáng tạo ngoài contract vào headless để bảo toàn tính tất định.
+
+- Màn mở đầu có tranh bến chợ và hướng dẫn hai buổi chơi. Bấm **Sổ thực đơn** để xem trước món, giá và thời gian nấu. Trong lượt chơi, nhấn **C** để lọc món theo nguyên liệu tươi hoặc kế hoạch ngày. Ở quán, sổ trừ phần nguyên liệu khách đã giữ.
+- **Bản chơi trên trình duyệt** mở lòng sông tới 45 m. Cá linh sống ở 3–12 m, cá lóc ở 8–20 m và cá kèo ở 22–43 m. Xem chỉ dẫn độ sâu khi bơi và nhấn **Space** hoặc **Bắt cá** khi đàn cá nằm trong tầm. Bình oxy ban đầu vẫn đủ 30 giây dưới nước.
+- **Cá linh chiên giòn** dùng 3 cá linh, nấu 5 giây, giá niêm yết 65k. **Cá kèo kho tộ** dùng 2 cá kèo, nấu 9 giây, giá niêm yết 85k. Khách gọi món theo kho khả dụng và kế hoạch ngày. Nhà bè hiển thị hình món trên phiếu, bếp và mâm của Út Sen.
+- Phiếu gọi món xếp bàn còn ít thời gian chờ lên trước. Các nút dưới màn chơi hỗ trợ tạm dừng, bật tương phản và thao tác trong shop. Trên màn hình cảm ứng, giữ các nút mũi tên để di chuyển.
+- Máy chủ live nạp vùng lặn và món mới từ [dữ liệu bản trình duyệt](chonoi/live_content.json) trước khi kiểm scenario. Headless tiếp tục dùng bản đồ 30 m và sáu món của Test Contract. [Ảnh chơi thử và kết quả kiểm tra](docs/proof/phase-4/giao-dien.md)
 
 ---
 

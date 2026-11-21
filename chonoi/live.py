@@ -21,7 +21,7 @@ import time
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from .contract import load_contract
+from .contract import load_contract, plan_ingredients
 from .errors import BadInput
 from .inputs import LiveInputs
 from .inventory import read_inventory
@@ -29,9 +29,36 @@ from .runner import make_session
 from .scenario import load_scenario
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
+WEB_FILES = {
+    "/": ("index.html", "text/html; charset=utf-8"),
+    "/index.html": ("index.html", "text/html; charset=utf-8"),
+    "/market.css": ("market.css", "text/css; charset=utf-8"),
+    "/market.js": ("market.js", "text/javascript; charset=utf-8"),
+    "/ben-cho.jpg": ("ben-cho.jpg", "image/jpeg"),
+    "/long-song.jpg": ("long-song.jpg", "image/jpeg"),
+    "/nha-be.jpg": ("nha-be.jpg", "image/jpeg"),
+    "/ut-sen.png": ("ut-sen.png", "image/png"),
+    "/ca-va-mon.png": ("ca-va-mon.png", "image/png"),
+}
 TICK_S = 1.0 / 60.0
 MAX_BODY = 4096
 RECENT_EVENTS = 40
+
+
+def load_live_tuning():
+    """Nạp nội dung chơi trực tiếp trước khi kiểm scenario và dựng session."""
+    tuning = load_contract()["tuning"]
+    with open(os.path.join(os.path.dirname(__file__), "live_content.json"), encoding="utf-8") as f:
+        content = json.load(f)
+    gather = tuning["gather"]
+    gather["bounds"]["d"][1] = content["depth_max"]
+    gather["fish_depths"]["ca_keo"] = content["ca_keo_depths"]
+    gather["fish_spawn_depths"]["ca_keo"] = content["ca_keo_spawn_depths"]
+    tuning["menu"].update(content["menu"])
+    for plan in tuning["day_plan"]:
+        plan["dishes"].update(content["specials_by_day"].get(str(plan["day"]), {}))
+        plan["ingredients"] = plan_ingredients(plan["dishes"], tuning["menu"])
+    return tuning
 
 
 class LiveGame:
@@ -102,6 +129,7 @@ class LiveGame:
             snap = self.session.snapshot()
             snap["meta"] = self.tuning.get(snap["phase"], {})  # theo pha đang chạy (day: gather/quan/shop)
             snap["menu"] = self.tuning["menu"]  # công thức/thời gian nấu cho HUD (chỉ hiển thị)
+            snap["freshness"] = self.tuning["freshness"]
             snap["events"] = list(self.events)
             snap["finished"] = self.session.done
             snap["reason"] = self.session.reason if self.session.done else None
@@ -151,12 +179,13 @@ class _Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         if path == "/state":
             self._send(200, self.game.state_json())
-        elif path in ("/", "/index.html"):
+        elif path in WEB_FILES:
+            filename, content_type = WEB_FILES[path]
             try:
-                with open(os.path.join(WEB_DIR, "index.html"), "rb") as f:
-                    self._send(200, f.read(), "text/html; charset=utf-8")
+                with open(os.path.join(WEB_DIR, filename), "rb") as f:
+                    self._send(200, f.read(), content_type)
             except OSError:
-                self._send(404, b'{"error":"thieu index.html"}')
+                self._send(404, b'{"error":"thieu tep giao dien"}')
         else:
             self._send(404, b'{"error":"khong co"}')
 
@@ -247,7 +276,7 @@ def main(argv=None) -> int:
             raise BadInput("--inventory chỉ dùng với quan")
         if a.inventory_out and a.mode != "gather":
             raise BadInput("--inventory-out chỉ dùng với gather")
-        tuning = load_contract()["tuning"]
+        tuning = load_live_tuning()
         scenario = load_scenario(a.scenario, a.mode, tuning)
         inventory = read_inventory(a.inventory) if a.inventory else None
         if inventory is not None and "stock" in scenario:
