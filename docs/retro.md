@@ -19,8 +19,47 @@
 - 1 hành động cho Phase 3: **Trước mỗi lần gắn tag, Integrator chạy lại `run-tests`, `smoke-proof`, `hud_check` trên ĐÚNG commit sẽ gắn tag và cập nhật `docs/verification/phase-n.md` từ kết quả đó; mọi lát vào `main` qua PR để Integrator chạy cả bộ test trước khi merge.** — Người nhận: NgChiVinh (Integrator). Kèm theo: bắt đầu 2 mở rộng ngay đầu Phase 3 (`burn` — HoangQuan23112004, `snake` — 22520160).
 
 ## Phase 4 (cuối)
-- Rà lại hành động Phase 2: đã làm chưa? vì sao?
-- Điều tốt / điều tệ:
-- Số liệu: số commit theo người, cách đọc code của nhau, token theo người:
-- Một lần AI sai và cách nhóm phát hiện:
-- Nếu làm lại, đổi gì:
+> Integrator (NgChiVinh) soạn từ lịch sử git, PR và bằng chứng; điều phối retro truclamld và cả nhóm sửa/bổ sung ý của mình.
+
+- **Rà lại hành động đã chốt ở P2** ("trước mỗi tag, Integrator chạy lại test/smoke/HUD trên ĐÚNG commit gắn tag và
+  cập nhật verification; mọi lát vào `main` qua PR"):
+  - **Đã làm:** P3 chạy lại bằng chứng trên `0d4676c` sau khi bật v1.2 (thay cho bảng QA cũ "bị chặn"); P4 không dùng
+    bằng chứng QA ở `80c8ff4` mà chạy lại trên commit bàn giao `9bb4150` (`docs/proof/phase-4/handoff/`). Tag `phase-4`
+    và Release v1.0.0 cùng trỏ `ca3ba6b`. Code của các bạn vào `main`/`v1.2` qua PR #9–#16.
+  - **Còn vướng:** vẫn có nhánh tự merge không qua Integrator (PR #8, #15) và push thẳng `main` ở P2 — may là test vẫn
+    xanh; lúc gộp, nhánh `chuan` hai lần gây rủi ro (P3 làm mất 5 dòng nhật ký người khác; P4 đổi lệnh contract
+    `python3` → `python`). Lý do: chưa bật bảo vệ nhánh `main` và mỗi người chạy trên Windows/Linux khác nhau.
+  - **Hành động kèm theo (2 mở rộng):** làm được ở P4 (Cháy món — HoangQuan23112004, Bảng xếp hạng — 22520160),
+    chậm hơn kế hoạch (P3) vì lõi v1.2 chiếm hết thời gian.
+- **Điều tốt:**
+  - Bàn giao đủ 4 phase: `phase-1`…`phase-4`, Release v1.0.0 có gói chạy được; 132/132 test, bench 682 FPS, soak 10/10.
+  - Đổi hợp đồng lớn (v1.2 kho cá thể) mà `main` không đỏ lần nào: ADR-0001 + nhánh tích hợp `v1.2` + lớp chuyển
+    fixture + CHANGELOG.
+  - Test hộp đen bắt lỗi thật trước máy chấm: merge làm mất lát 4 (P1), Shop chưa hiện cấp vừa mua, Cá Sấu lệch 1 tick,
+    `avg_fps` không khớp `frames / measured_s`.
+  - Công cụ tự viết dùng lại mỗi phase: `smoke_proof.py`, `hud_check.py`, skill `run-tests`/`smoke-proof`.
+- **Điều tệ:**
+  - Tag `phase-1`, `phase-3` gắn sau mốc giờ.
+  - Commit không gắn tài khoản GitHub làm mất công: TrungHieuPh 5 commit + 1 commit "ShipDNX Team", truclamld 1 commit.
+  - Việc dồn về Integrator (lõi v1.2, Shop, bench, tích hợp) — một điểm nghẽn; người khác chờ hoặc làm trùng.
+  - Ghi chép (phản tư, nhật ký AI, retro) dồn cuối buổi; 2 phản tư thiếu tại commit bàn giao.
+- **Số liệu:**
+  - Commit có nội dung trên `main` (không tính merge, theo tác giả git): NCV/NgChiVinh 50 · Viet Khoa/khoa-asta 9 ·
+    22520160 6 · TrungHieuPh 5 (+1 "ShipDNX Team") · Quan Hoang/HoangQuan23112004 5 · Duc Truc Lam Le/truclamld 4.
+    Commit merge/PR: NgChiVinh 17 · khoa-asta 7 · TrungHieuPh 3 · 22520160 3 · HoangQuan23112004 1.
+  - Cách đọc code của nhau: Integrator đọc diff + chạy cả bộ test trên bản merge thử trước mỗi PR (#1–#16); QA viết
+    test hộp đen theo AC; review chéo qua PR (lát 3 ↔ 4, HUD, Cá Sấu).
+  - Token theo người: chưa đo (nhật ký AI ghi "chưa đo"; mỗi người bổ sung từ `/cost` hoặc công cụ của mình nếu có).
+- **Một lần AI sai và cách nhóm xác minh:** ở P1, `git merge-tree` báo nhánh `chuan` "không conflict" nhưng bản gộp
+  do AI hỗ trợ đã mất code lát 4 và `step()` trả `None` → mọi lượt `--mode quan` crash. Nhóm phát hiện vì Integrator
+  chạy cả bộ test trên đúng code của nhánh (12 fail + 2 lỗi / 65) chứ không tin báo "không conflict"; sửa bằng merge
+  lại từ commit gốc (PR #3). Tương tự ở P3: AI ghi "ươn sau 8400 bước", bằng chứng trên `main` cho 8401 — đọc lại luật
+  "< 30" thì game đúng, AI sai.
+- **Nếu làm lại, đổi gì:**
+  - Bật bảo vệ nhánh `main` (bắt buộc PR + test xanh) từ Phase 1; thống nhất chạy test qua `python3` (WSL/alias) để
+    không ai đổi contract cho Windows.
+  - Kiểm `git config user.email` của mọi người ngay kickoff (commit gắn tài khoản).
+  - Chia lõi lớn (v1.2) theo lát song song ngay phút 0–7 thay vì Integrator làm hết; mỗi người viết phản tư + nhật ký
+    AI cuối mỗi phase thay vì cuối buổi.
+- **Hành động tiếp theo:** truclamld và 22520160 bổ sung phản tư; TrungHieuPh thêm email vào GitHub; mỗi người điền
+  token/chi phí vào nhật ký AI nếu đo được.
