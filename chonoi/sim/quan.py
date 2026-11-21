@@ -11,6 +11,7 @@ Nhóm viết tiếp (PRD-0 mục F, Quán; hợp đồng lát 3 ↔ 4 ở docs/c
 """
 
 import math
+from fractions import Fraction
 
 from ..errors import BadInput
 from ..ids import id_key, sort_by_id
@@ -244,7 +245,11 @@ class QuanSim:
                 else:
                     c["reserved"] = picked
 
-        # 2. Xét bếp theo id. Món nấu xong chuyển ready với ready_ticks = 0 (burn_s: null).
+        # 2. Xét bếp theo id. Món nấu xong chuyển ready với ready_ticks = 0.
+        #    Nếu bật mở rộng cháy món (burn_s hữu hạn): ready_ticks > burn_s * 60 -> bỏ món,
+        #    bếp idle ngay, thử giữ lại 1 lần cho đơn (reserved hoặc unfulfillable), phát dish_burnt.
+        burn_s = self.t.get("burn_s")
+        burn_ticks = int(round(burn_s * TICK)) if burn_s is not None else None
         for s in sort_by_id(self.stoves):
             if s["state"] == "cooking" and s["cook_ticks_left"] == 0:
                 s["state"] = "ready"
@@ -252,6 +257,33 @@ class QuanSim:
                 events.append((
                     "dish_ready",
                     {"stove_id": s["id"], "order_id": s["dish"]["order_id"], "dish_id": s["dish"]["dish_id"]},
+                ))
+            elif burn_ticks is not None and s["state"] == "ready" and s["ready_ticks"] > burn_ticks:
+                dish = s["dish"]
+                s["state"] = "idle"
+                s["dish"] = None
+                s["cook_ticks_left"] = 0
+                s["ready_ticks"] = 0
+                order_status = "unfulfillable"
+                c = next((x for x in self.customers if x["id"] == dish["order_id"]), None)
+                if c is not None:
+                    c["base_price"] = None
+                    picked = self._pick(self.menu[c["dish_id"]]["recipe"], self._reserved_ids(skip=c))
+                    if picked is not None:
+                        c["reserved"] = picked
+                        c["order_status"] = "reserved"
+                        order_status = "reserved"
+                    else:
+                        c["reserved"] = []
+                        c["order_status"] = "unfulfillable"
+                events.append((
+                    "dish_burnt",
+                    {
+                        "stove_id": s["id"],
+                        "order_id": dish["order_id"],
+                        "dish_id": dish["dish_id"],
+                        "order_status": order_status,
+                    },
                 ))
 
         # 3. Di chuyển rồi xét tối đa một interact, chọn theo (khoảng cách, bếp trước bàn, id).
@@ -371,7 +403,7 @@ class QuanSim:
         patience_max = int(round(self.t["patience_s"] * TICK))
         ratio = c["patience_ticks_left"] / patience_max if patience_max > 0 else 0.0
         base_price = int(self.hand["base_price"])
-        tip = math.floor(base_price * self.t["tip_rate"]) if ratio >= self.t["tip_min_patience_ratio"] else 0
+        tip = math.floor(Fraction(base_price) * Fraction(str(self.t["tip_rate"]))) if ratio >= self.t["tip_min_patience_ratio"] else 0
         c["state"] = "eating"
         c["order_status"] = "served"
         c["eat_ticks_left"] = int(round(self.t["eat_s"] * TICK))
