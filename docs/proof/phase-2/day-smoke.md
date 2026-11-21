@@ -1,8 +1,8 @@
 # Smoke vòng ngày Phase 2
 
-- Branch: `qa/khoa-phase1-verification`
-- Code được kiểm: sau khi tích hợp `origin/main` tại `d8c0425` (day loop, Shop và pause).
-- Bộ test: `$env:PYTHONPATH="tests;."` rồi `python3 -m unittest discover -s tests -v` — **84/84 OK**.
+- Branch: `khoa-verification` (đổi tên từ `qa/khoa-phase1-verification`).
+- Code được kiểm: smoke ban đầu sau `d8c0425`; chạy lại sau khi tích hợp `origin/main` tại `d66c50d` (bổ sung cá bơi/sinh).
+- Bộ test sau cập nhật: `$env:PYTHONPATH="tests;."` rồi `python3 -m unittest discover -s tests -v` — **92/92 OK**.
 
 ## Lệnh
 
@@ -11,7 +11,7 @@ python3 -m chonoi.headless --mode day --seed 42 --days 1 --ticks 22200 --snapsho
 python3 -m chonoi.headless --mode day --seed 42 --days 5 --ticks 111000 --snapshot-every 600 --out docs\proof\phase-2\day-five.jsonl
 ```
 
-Hai lệnh đều thoát mã 0. File JSONL bị `.gitignore` bỏ qua; các lệnh trên có thể chạy lại để tái tạo output.
+Hai lệnh đều thoát mã 0; end record lần chạy lại có `reason: days_complete`, `days_completed` lần lượt là 1 và 5. File JSONL bị `.gitignore` bỏ qua; các lệnh trên có thể chạy lại để tái tạo output.
 
 ## Kết quả
 
