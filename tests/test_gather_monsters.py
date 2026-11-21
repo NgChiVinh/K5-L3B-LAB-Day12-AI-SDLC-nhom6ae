@@ -39,11 +39,14 @@ class CrocodileHit(unittest.TestCase):
             self.assertEqual(s2["monsters"][0]["state_ticks_left"], 59)
 
     def test_invulnerability_blocks_hits_for_full_90_ticks(self):
+        # Đổi khi tích hợp (NgChiVinh): theo quy tắc chung "Cooldown L đặt ở tick t dùng lại từ t+L" (PRD-0 F)
+        # và thứ tự v1.1 mục 4.5 (giảm bất tử ở đầu bước, trước xét chạm), bất tử 90 có từ tick 0 chặn hit ở
+        # tick 1..89, hit được từ tick 90. Bản cũ kỳ vọng chặn cả tick 90. Ghi docs/clarify.md #12 để PO xác nhận.
         with Workdir() as w:
             rows = run_gather(w, {"player": {"pos": [20, 10], "invuln_ticks": 90},
                                   "monsters": [crocodile()]}, 90)
-            self.assertEqual(events(rows, "monster_hit"), [])
-            self.assertEqual(snapshots(rows)[-1]["player"]["invuln_ticks"], 0)
+            self.assertEqual([e["tick"] for e in events(rows, "monster_hit")], [90])
+            self.assertEqual(next(s for s in snapshots(rows) if s["tick"] == 89)["player"]["invuln_ticks"], 1)
 
     def test_one_hit_uses_nearest_then_id_order(self):
         with Workdir() as w:
