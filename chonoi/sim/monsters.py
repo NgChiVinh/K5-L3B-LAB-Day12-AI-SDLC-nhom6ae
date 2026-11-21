@@ -3,6 +3,7 @@
 import math
 
 from ..ids import id_key, sort_by_id
+from ..items import order_json
 
 TICK = 60.0
 
@@ -83,7 +84,7 @@ def update_monsters(sim, events, can_hit=True):
     else:
         recoil_dir = [(monster["pos"][i] - sim.pos[i]) / distance for i in range(2)]
     lost_count = math.floor(len(sim.hold) * tuning["loss_ratio"])
-    lost = list(reversed(sim.hold[-lost_count:])) if lost_count else []
+    lost = order_json(reversed(sim.hold[-lost_count:])) if lost_count else []  # mảng cá thể, thứ tự bỏ LIFO
     if lost_count:
         del sim.hold[-lost_count:]
     sim.hp = max(0, sim.hp - 1)
@@ -96,7 +97,7 @@ def update_monsters(sim, events, can_hit=True):
     if sim.hp > 0:
         return False
 
-    faint_lost = list(reversed(sim.hold))
+    faint_lost = order_json(reversed(sim.hold))
     sim.hold = []
     events.append(("faint", {"cause": "monster", "lost": faint_lost, "hp": 0}))
     sim._finish("fainted", events)

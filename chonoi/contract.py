@@ -31,8 +31,11 @@ def load_contract(path=DEFAULT_PATH) -> dict:
             c = json.load(f)
     except (OSError, ValueError) as e:
         raise BadInput(f"không đọc được {path}: {e}")
-    if c.get("contract_version") != "1.1":
-        raise BadInput('contract_version phải là "1.1" (TICKET-02)')
+    if c.get("contract_version") != "1.2":
+        raise BadInput('contract_version phải là "1.2" (TICKET-03)')
+    fr = (c.get("tuning") or {}).get("freshness")
+    if not isinstance(fr, dict) or set(fr) != {"initial", "gather_decay_per_s", "quan_decay_per_s", "spoiled_below"}             or not all(_num(v) and v >= 0 for v in fr.values()) or not 0 < fr["spoiled_below"] <= fr["initial"] <= 100:
+        raise BadInput("tuning.freshness phải có initial, gather_decay_per_s, quan_decay_per_s, spoiled_below hợp lệ")
     if not isinstance(c.get("extensions", []), list):
         raise BadInput("extensions phải là mảng mã mở rộng")
     validate_tuning(c.get("tuning"))
