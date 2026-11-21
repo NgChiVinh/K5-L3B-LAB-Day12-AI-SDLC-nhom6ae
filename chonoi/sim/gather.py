@@ -25,6 +25,7 @@ import math
 
 from ..ids import id_key, sort_by_id
 from ..inventory import hold_to_items
+from .monsters import build_monsters, update_monsters
 from .ramp import ramp_velocity
 
 TICK = 60.0
@@ -72,6 +73,7 @@ class GatherSim:
         self.invuln_ticks = p.get("invuln_ticks", 0)
         self.catch_cd_ticks = p.get("catch_cd_ticks", 0)
         self.phase_tick = 0
+        self.monsters = build_monsters(t["monsters"], scenario.get("monsters"), ids, day=day)
         self.hold = list(scenario.get("hold", []))  # thứ tự nhặt, cuối mảng là mới nhất
         self.time_left_ticks = scenario.get("time_left_ticks", int(round(t["duration_s"] * TICK)))
         # nút và đàn cá: scenario THAY THẾ danh sách mặc định; random_fish=false tắt cá mặc định
@@ -118,6 +120,10 @@ class GatherSim:
                       for n in sort_by_id(self.nodes)],
             "fish": [{"id": f["id"], "pos": f["pos"], "kind": f["kind"], "heading_deg": f["heading_deg"],
                       "age_ticks": f["age_ticks"]} for f in sort_by_id(self.fish)],
+            "monsters": [{"id": m["id"], "kind": m["kind"], "pos": m["pos"],
+                          "waypoints": m["waypoints"], "target_idx": m["target_idx"],
+                          "state": m["state"], "state_ticks_left": m["state_ticks_left"],
+                          "recoil_dir": m["recoil_dir"]} for m in sort_by_id(self.monsters)],
         }
 
     # --- một bước ---------------------------------------------------------------
@@ -138,7 +144,11 @@ class GatherSim:
         self._move(inp)
         if self._oxygen_step(was_surface, events):
             return events
-        # 3. interact: bến trước, rồi hái
+        # 3. Quái cập nhật sau bơi/oxy và trước tương tác (TICKET-02 mục 4.5).
+        # Bất tử đã giảm ở bước 1 (mục 4.5, như hồi bắt): 'hết bất tử' xét theo giá trị SAU khi giảm.
+        if update_monsters(self, events, can_hit=self.invuln_ticks == 0):
+            return events
+        # 4. interact: bến trước, rồi hái
         if inp.pressed("interact"):
             if self._in_dock():
                 self._finish("docked", events)
@@ -159,7 +169,7 @@ class GatherSim:
                         node["regrow_ticks"] = int(round(self.t["regrow_s"] * TICK))
                         events.append(("gather", {"node_id": node["id"], "kind": node["kind"],
                                                   "amount": amount}))
-        # 4. bắt cá
+        # 5. bắt cá
         if inp.pressed("catch"):
             if self.catch_cd_ticks == 0 and not self._at_surface():
                 candidates = [f for f in self.fish
