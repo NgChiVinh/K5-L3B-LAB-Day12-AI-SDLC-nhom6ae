@@ -46,6 +46,11 @@ def main(argv=None) -> int:
         cmd_str = a.cmd or json.load(f)["headless_cmd"]
     cmd = shlex.split(cmd_str)
     out = os.path.join(ROOT, "docs", "proof", a.phase)
+    # Kiểm cây làm việc TRƯỚC khi ghi bằng chứng, bỏ qua chính thư mục bằng chứng
+    # (nếu kiểm sau, file do script vừa ghi sẽ bị tính nhầm là "thay đổi chưa commit").
+    rel_out = os.path.relpath(out, ROOT).replace(os.sep, "/")
+    commit = _git("rev-parse", "--short", "HEAD")
+    dirty = " (có thay đổi chưa commit)" if _git("status", "--porcelain", "--", ".", f":(exclude){rel_out}") else ""
     os.makedirs(out, exist_ok=True)
     p = lambda name: os.path.join(out, name)
 
@@ -93,9 +98,7 @@ def main(argv=None) -> int:
         check("quán tick 0 stock = file kho", snap0.get("stock") == EXPECTED, json.dumps(snap0.get("stock"), ensure_ascii=False))
 
     passed = all(ok for _, ok, _ in checks)
-    commit = _git("rev-parse", "--short", "HEAD")
-    dirty = " (có thay đổi chưa commit)" if _git("status", "--porcelain") else ""
-    md = [f"# Smoke hai tiến trình — {a.phase}", "",
+    md =[f"# Smoke hai tiến trình — {a.phase}", "",
           f"- Thời điểm: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}",
           f"- Commit: `{commit}`{dirty}",
           f"- Kết quả: **{'ĐẠT' if passed else 'CHƯA ĐẠT'}**", "",
