@@ -85,6 +85,14 @@ poll();
 const KIND_COLOR = { ca_loc: "#7c9a52", ca_linh: "#d6e6f2", ca_keo: "#d9a066", bong_dien_dien: "#f2c230", bong_sung: "#e8799c", keo_neo: "#8fcf6b" };
 const KIND_NAME = { ca_loc: "cá lóc", ca_linh: "cá linh", ca_keo: "cá kèo", bong_dien_dien: "điên điển", bong_sung: "bông súng", keo_neo: "kèo nèo" };
 const kc = (k) => KIND_COLOR[k] || "#bbbbbb";
+const DISH_NAME = { ca_loc_nuong_trui: "cá lóc nướng trui", goi_bong_sung: "gỏi bông súng", lau_ca_linh_dien_dien: "lẩu cá linh điên điển" };
+const dn = (id) => DISH_NAME[id] || id;
+// Kho khả dụng = tồn vật lý − phần khách đang giữ chỗ (PRD mục F, Quán bước 5; contracts mục 3).
+function availableStock(stock, customers) {
+  const out = Object.assign({}, stock || {});
+  (customers || []).forEach((c) => Object.keys(c.reserved || {}).forEach((k) => { out[k] = (out[k] || 0) - c.reserved[k]; }));
+  return out;
+}
 
 function fit() {
   const dpr = window.devicePixelRatio || 1;
@@ -99,6 +107,17 @@ function text(s, x, y, o = {}) {
   ctx.textAlign = o.align || "left";
   ctx.textBaseline = o.base || "alphabetic";
   ctx.fillText(s, x, y);
+}
+// Như text() nhưng cắt bớt kèm "…" để không vượt maxW (tránh tràn/đè khi cửa sổ hẹp). maxW < 20 thì không vẽ.
+function fitText(s, x, y, maxW, o = {}) {
+  if (maxW < 20) return;
+  ctx.font = (o.size || 14) + "px system-ui, sans-serif";
+  s = String(s);
+  if (ctx.measureText(s).width > maxW) {
+    while (s.length > 1 && ctx.measureText(s + "…").width > maxW) s = s.slice(0, -1);
+    s += "…";
+  }
+  text(s, x, y, o);
 }
 function panel(x, y, w, h, fill = "rgba(13,25,32,.88)") {
   ctx.fillStyle = fill;
@@ -156,41 +175,48 @@ function drawGatherHud(w) {
   const inventory = Object.keys(items).length
     ? Object.keys(items).map((k) => (KIND_NAME[k] || k) + " ×" + items[k]).join("  ·  ")
     : "Trống";
-  text("GIỎ " + (snap.hold_count ?? (snap.hold || []).length) + "/" + (snap.hold_capacity || "—"), Math.min(535, w * .53), 31, { size: 11, color: "#b8c8cc" });
-  text(inventory, Math.min(535, w * .53), 54, { size: 13, color: "#f1dfae" });
+  // Cột giỏ đặt sau cột Máu (405 + ~65px), cắt chữ theo bề rộng còn lại để không đè/tràn khi cửa sổ hẹp.
+  const gx = 470, gw = w - 24 - gx;
+  fitText("GIỎ " + (snap.hold_count ?? (snap.hold || []).length) + "/" + (snap.hold_capacity || "—"), gx, 31, gw, { size: 11, color: "#b8c8cc" });
+  fitText(inventory, gx, 54, gw, { size: 13, color: "#f1dfae" });
 }
 
 function drawQuanHud(w) {
   const customers = snap.customers || [];
   const stoves = snap.stoves || [];
   const stock = snap.stock || {};
-  panel(12, 10, Math.max(280, w - 24), 78);
+  // Panel cao 132 để phủ cả hàng GỌI MÓN (y 111) và ĐANG CẦM (y 133); cảnh quán bắt đầu từ y 152.
+  panel(12, 10, Math.max(280, w - 24), 132);
   text("BUỔI TỐI · NHÀ BÈ MÁ TƯ", 26, 30, { size: 12, color: "#f5d58a" });
   text("Còn " + fmtTime(snap.time_left_ticks), 26, 61, { size: 20 });
   text("Tiền " + (snap.money ?? 0) + "k", 145, 49, { size: 16, color: "#ffe08a" });
   text("Uy tín " + Number(snap.reputation ?? 0).toFixed(1) + "/5", 145, 70, { size: 13, color: "#d8c4ff" });
-  text("Điểm " + (snap.score ?? 0), 145, 31, { size: 12, color: "#d7dbe0" });
-  const stockText = Object.keys(stock).filter((k) => stock[k] > 0)
-    .map((k) => (KIND_NAME[k] || k) + " ×" + stock[k]).join("  ·  ") || "Trống";
-  text("KHO", 285, 31, { size: 11, color: "#b8c8cc" });
-  text(stockText, 285, 52, { size: 13, color: "#d6edda" });
+  // Điểm canh phải panel (trước đây ở x 145 đè lên tiêu đề BUỔI TỐI).
+  text("Điểm " + (snap.score ?? 0), w - 26, 31, { size: 12, color: "#d7dbe0", align: "right" });
+  // DoD: HUD buổi tối hiện KHO KHẢ DỤNG (tồn − phần khách giữ), không phải tồn vật lý.
+  const avail = availableStock(stock, customers);
+  const stockText = Object.keys(avail).sort().filter((k) => avail[k] > 0)
+    .map((k) => (KIND_NAME[k] || k) + " ×" + avail[k]).join("  ·  ") || "Trống";
+  text("KHO KHẢ DỤNG", 285, 31, { size: 11, color: "#b8c8cc" });
+  fitText(stockText, 285, 52, w - 24 - 285, { size: 13, color: "#d6edda" });
   const stoveText = stoves.map((s) => {
-    const label = s.state === "cooking" ? "đang nấu " + Math.ceil((s.cook_ticks_left || 0) / 60) + "s" : s.state === "ready" ? "món đã xong" : "rảnh";
+    const dish = s.dish && s.dish.dish_id ? " " + dn(s.dish.dish_id) : "";
+    const label = s.state === "cooking" ? "đang nấu" + dish + " " + Math.ceil((s.cook_ticks_left || 0) / 60) + "s" : s.state === "ready" ? "xong" + dish : "rảnh";
     return s.id + ": " + label;
   }).join("  ·  ") || "Chưa có bếp";
   text("BẾP", 285, 72, { size: 11, color: "#b8c8cc" });
-  text(stoveText, 326, 72, { size: 12, color: "#ffd1a1" });
+  fitText(stoveText, 326, 72, w - 24 - 326, { size: 12, color: "#ffd1a1" });
   const orderText = customers.length
     ? customers.map((c) => {
         const left = c.patience_ticks_left === undefined ? "" : " · " + Math.ceil(c.patience_ticks_left / 60) + "s";
-        const dish = c.dish_id || (c.order_status === "unfulfillable" ? "chưa có món" : "đang chọn món");
+        const dish = c.dish_id ? dn(c.dish_id) : (c.order_status === "unfulfillable" ? "chưa có món" : "đang chọn món");
         return c.table_id + ": " + dish + left;
       }).join("  ·  ")
     : "Chưa có khách";
   text("GỌI MÓN", 26, 111, { size: 11, color: "#b8c8cc" });
-  text(orderText, 100, 111, { size: 12, color: "#f5e4d3" });
-  const hand = snap.hand ? (typeof snap.hand === "string" ? snap.hand : (snap.hand.dish_id || "món")) : "Tay trống";
-  text("ĐANG CẦM: " + hand, 26, 133, { size: 12, color: "#ffcf8b" });
+  fitText(orderText, 100, 111, w - 24 - 100, { size: 12, color: "#f5e4d3" });
+  const hand = snap.hand ? (typeof snap.hand === "string" ? dn(snap.hand) : dn(snap.hand.dish_id || "món")) : "Tay trống";
+  fitText("ĐANG CẦM: " + hand, 26, 133, w - 24 - 26, { size: 12, color: "#ffcf8b" });
 }
 
 // ----- cảnh GATHER: nhìn ngang, x sang phải, d xuống -----
