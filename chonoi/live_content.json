@@ -1,0 +1,15 @@
+{
+  "depth_max": 45,
+  "ca_keo_depths": [22, 43],
+  "ca_keo_spawn_depths": [24, 27, 36, 41],
+  "menu": {
+    "ca_keo_kho_to": {"recipe": {"ca_keo": 2}, "cook_s": 9, "price": 85},
+    "ca_linh_chien_gion": {"recipe": {"ca_linh": 3}, "cook_s": 5, "price": 65}
+  },
+  "specials_by_day": {
+    "1": {"ca_linh_chien_gion": 1},
+    "2": {"ca_keo_kho_to": 1},
+    "4": {"ca_keo_kho_to": 1},
+    "5": {"ca_keo_kho_to": 1}
+  }
+}
