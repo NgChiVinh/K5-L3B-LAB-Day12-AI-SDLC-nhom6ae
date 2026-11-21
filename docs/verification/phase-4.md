@@ -33,3 +33,9 @@ Chạy lại sau PR #16 (gộp đóng gói + burn, leaderboard, cảnh báo + t�
 ## Đánh giá ngắn
 - Đạt: AC-P4-01 → 08. Chưa đủ: AC-P4-09 (2 phản tư); retro cuối (`docs/retro.md` Phase 4) do truclamld điều phối — chưa có tại commit bàn giao.
 - Giới hạn: bench render bằng rasterizer phần mềm offscreen (client thật vẽ canvas trên trình duyệt); soak dùng bot tối giản (`earned` 0).
+
+## Bổ sung sau tag `phase-4`
+- PR #17 (22520160, `61d68e3`): `docs/members/22520160.md` (185 từ) — AC-P4-09 còn **5/6** phản tư trên `main`.
+- `docs/members/truclamld.md` có trên nhánh `phase4/HUD` (`54df0b8`) nhưng **261 từ, vượt giới hạn ≤ 200** → chưa merge
+  vào `main`.
+- Retro cuối Phase 4 đã có trong `docs/retro.md` (Integrator soạn, nhóm bổ sung).
