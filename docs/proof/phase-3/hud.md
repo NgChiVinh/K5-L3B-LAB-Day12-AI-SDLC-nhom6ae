@@ -1,8 +1,8 @@
 # Kiểm HUD (AC-P1-07) — phase-3
 
-- Thời điểm: 2026-11-21 13:55
-- Commit: `b0a76ce` (có thay đổi chưa commit)
-- Lệnh: `python3 tools/hud_check.py --phase phase-3`
+- Thời điểm: 2026-11-21 14:20
+- Commit: `0d4676c`
+- Lệnh: `python3 tools/hud_check.py --phase phase-3` (headless: `python -m chonoi.headless`)
 - Kết quả: **ĐẠT** — 67/67 mục kiểm
 
 Cách kiểm: snapshot do luật sim sinh ra (headless) → vẽ HUD của `chonoi/web/index.html` bằng canvas giả (`tools/hud_harness.js`) ở 4 bề rộng 1280/900/700/480 → kiểm lỗi vẽ, chữ đè/tràn, đủ trường HUD tối thiểu của DoD, kho khả dụng tính độc lập từ snapshot. Bề rộng chữ là ước lượng (ký tự × cỡ × 0.56).
