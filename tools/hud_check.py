@@ -111,7 +111,7 @@ def main(argv=None) -> int:
             if res["error"]:
                 checks.append((tag, "vẽ không lỗi", False, res["error"]))
                 continue
-            hud = [t for t in res["texts"] if t["y1"] < 160]
+            hud = [t for t in res["texts"] if t["y1"] < 240]  # vùng HUD (v1.1: chữ 18 px, nhiều hàng)
             bad = []
             for i, t in enumerate(hud):
                 if t["x1"] > int(W) + 1:
@@ -120,6 +120,9 @@ def main(argv=None) -> int:
                     if t["x0"] < u["x1"] and u["x0"] < t["x1"] and t["y0"] < u["y1"] and u["y0"] < t["y1"]:
                         bad.append(f'đè: "{t["s"]}" ↔ "{u["s"]}"')
             checks.append((tag, "không chữ đè / tràn", not bad, "; ".join(bad[:3])))
+            if W == "1280":  # DoD v1.1: chữ không chân >= 18 px ở 1280x720 (mọi chữ trên màn hình)
+                small = sorted({f'"{t["s"]}" {round(t["y1"] - t["y0"])}px' for t in res["texts"] if t["y1"] - t["y0"] < 18})
+                checks.append((name, "mọi chữ >= 18 px ở 1280 px", not small, "; ".join(small[:4])))
             if W == "1280":
                 strings = [t["s"] for t in hud]
                 hud_text[name] = strings
@@ -130,7 +133,7 @@ def main(argv=None) -> int:
                     for c in snap["customers"]:
                         for k, q in c.get("reserved", {}).items():
                             avail[k] = avail.get(k, 0) - q
-                    want = "  ·  ".join(f"{KIND[k]} ×{v}" for k, v in sorted(avail.items()) if v > 0) or "Trống"
+                    want = " · ".join(f"{KIND[k]} ×{v}" for k, v in sorted(avail.items()) if v > 0) or "Trống"
                     i = strings.index("KHO KHẢ DỤNG") if "KHO KHẢ DỤNG" in strings else -1
                     got = strings[i + 1] if i >= 0 else None
                     checks.append((name, "kho khả dụng = tồn − giữ chỗ", got == want, f"HUD: {got!r}, cần: {want!r}"))

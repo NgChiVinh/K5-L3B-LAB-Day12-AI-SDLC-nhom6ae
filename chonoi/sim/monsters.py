@@ -30,6 +30,9 @@ def build_monsters(tuning, fixtures, ids, day=1):
 def update_monsters(sim, events, can_hit=True):
     """Di chuyển quái theo id, áp dụng tối đa một va chạm; trả True nếu người chơi ngất."""
     tuning = sim.t["monsters"]
+    # Con đang recoil ở ĐẦU bước không được chạm trong bước này, kể cả khi vừa hết recoil
+    # ('hết recoil về patrol, xét phát hiện/chạm từ bước kế').
+    recoiling = {m["id"] for m in sim.monsters if m["state"] == "recoil"}
     for monster in sort_by_id(sim.monsters):
         species = tuning["species"][monster["kind"]]
         if monster["state"] == "recoil":
@@ -63,7 +66,7 @@ def update_monsters(sim, events, can_hit=True):
         return False
     contacts = []
     for monster in sim.monsters:
-        if monster["state"] == "recoil":
+        if monster["state"] == "recoil" or monster["id"] in recoiling:
             continue
         species = tuning["species"][monster["kind"]]
         if sim.pos[1] >= species["depths"][0]:

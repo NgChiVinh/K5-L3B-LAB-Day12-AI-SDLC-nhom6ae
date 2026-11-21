@@ -132,7 +132,6 @@ class GatherSim:
         self.phase_tick += 1
         # 1. đồng hồ và hàng có sẵn: giảm bộ đếm, nút mọc lại
         self.time_left_ticks = max(0, self.time_left_ticks - 1)
-        can_monster_hit = self.invuln_ticks == 0
         self.invuln_ticks = max(0, self.invuln_ticks - 1)
         self.catch_cd_ticks = max(0, self.catch_cd_ticks - 1)
         for n in sort_by_id(self.nodes):
@@ -146,7 +145,8 @@ class GatherSim:
         if self._oxygen_step(was_surface, events):
             return events
         # 3. Quái cập nhật sau bơi/oxy và trước tương tác (TICKET-02 mục 4.5).
-        if update_monsters(self, events, can_hit=can_monster_hit):
+        # Bất tử đã giảm ở bước 1 (mục 4.5, như hồi bắt): 'hết bất tử' xét theo giá trị SAU khi giảm.
+        if update_monsters(self, events, can_hit=self.invuln_ticks == 0):
             return events
         # 4. interact: bến trước, rồi hái
         if inp.pressed("interact"):

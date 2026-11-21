@@ -1,30 +1,27 @@
 # Ma trận kiểm chứng Phase 2
 
-Trạng thái trên branch `khoa-verification`, sau khi tích hợp `origin/main` tại `d66c50d`.
+Cập nhật trên `main` tại commit `90bd430` (tag `phase-2`; code giống bản tích hợp `fe3930f`).
 
-| AC | Kiểm chứng / bằng chứng | Trạng thái | Chặn bởi |
-|---|---|---|---|
-| AC-P2-01 | Contract v1.1, dữ liệu chuẩn, 8 đàn, N5/N6, 6 món; regression hộp đen | đạt | — |
-| AC-P2-02 | Số đàn/nút, yield cá kèo, cá bơi, tăng tuổi và sinh theo lịch có regression | đạt | — |
-| AC-P2-03 | Chưa có `monsters.py` hoặc kiểm chứng Cá Sấu | chưa làm | Chuẩn #2 |
-| AC-P2-04 | Cấu hình 2 bếp/4 bàn/6 món có test; chưa có kiểm chứng hành vi đồng thời đa bếp/bàn và lọc menu trong ngày | một phần | Quân #3 |
-| AC-P2-05 | Mua nâng cấp, sai giá/thiếu tiền/cấp tối đa, `shop_done` và tự đóng Shop có test | đạt | — (Shop do Vĩnh #4 tích hợp) |
-| AC-P2-06 | Thứ tự pha, kế hoạch D1–D5, kết thúc ngày và giới hạn tick có test; smoke 1 ngày và 5 ngày đạt | đạt | — |
-| AC-P2-07 | Pause/resume và timer dừng có test trong gather, quán và Shop của day mode | đạt | — |
-| AC-P2-08 | `live.py` hỗ trợ day, nhưng chưa kiểm chứng các màn hình, HUD v1.1 và menu pause trên UI | chưa làm | Lâm #5 |
-| AC-P2-09 | Regression 92/92; smoke bàn giao kho và smoke ngày đạt. Chưa phải smoke gameplay đầy đủ hoặc kết quả gắn tag cuối | một phần | #2, #3, #5 và tag tích hợp |
+| AC | Kiểm chứng / bằng chứng | Trạng thái |
+|---|---|---|
+| AC-P2-01 | Contract v1.1, số chuẩn, 6 nguyên liệu, 6 món, `day_plan`, `shop`: `chonoi/contract.py`, `tests/test_qa_phase2.py`, `tests/test_smoke_p1.py` | đạt |
+| AC-P2-02 | Cá bơi 1.5 m/s, đổi hướng, phản xạ mép, sinh theo lịch, trần 12: `tests/test_gather_fish.py`, `tests/test_qa_phase2.py` | đạt |
+| AC-P2-03 | Cá Sấu patrol/chase/recoil, hit/faint, bất tử, M2 từ Ngày 3: `tests/test_gather_monsters.py`, `tests/test_monsters_edges.py`, [day-multi.md](../proof/phase-2/day-multi.md) | đạt (cách hiểu bất tử t+90 chờ xác nhận ở `docs/clarify.md` #12) |
+| AC-P2-04 | 2 bếp / 4 bàn / 6 món, lọc menu theo kế hoạch ngày: `tests/test_p2_quan_shop.py` | đạt |
+| AC-P2-05 | Giá Shop, lỗi funds/max_level/unknown, thứ tự buy và `shop_done`, tự đóng 600 tick: `tests/test_day_p2.py`, `tests/test_p2_quan_shop.py`, [day-multi.md](../proof/phase-2/day-multi.md) | đạt |
+| AC-P2-06 | Thứ tự pha, kế hoạch D1–D5, áp nâng cấp từ ngày kế và giới hạn 20s/ngày: `tests/test_day_p2.py`, [day-smoke.md](../proof/phase-2/day-smoke.md), [day-multi.md](../proof/phase-2/day-multi.md) | đạt |
+| AC-P2-07 | Pause/resume dừng timer ở gather, quán và Shop: `tests/test_day_p2.py::Pause` | đạt |
+| AC-P2-08 | Menu, màn hình ngày, HUD v1.1: [hud.md](../proof/phase-2/hud.md) — 56/57. Còn va chạm ở 480px, thiếu một số HUD v1.1 và chưa kiểm chơi tay trọn vòng ngày trên trình duyệt | một phần |
+| AC-P2-09 | Regression P1/P2 108/108; smoke tích hợp [integration.md](../proof/phase-2/integration.md), [smoke.md](../proof/phase-2/smoke.md) 7/7 | đạt |
 
-## Kết quả đã chạy
+## Kết quả kiểm chứng bổ sung của Khoa
 
 - Windows PowerShell: `$env:PYTHONPATH="tests;."`
-- `python3 -m unittest discover -s tests -v`: **92/92 OK** sau khi tích hợp `origin/main` tại `d66c50d`.
-- Smoke gather → quan: [`integration.md`](../proof/phase-2/integration.md). Dùng giỏ fixture tại bến nên chỉ xác nhận luồng bàn giao kho.
-- Smoke vòng ngày: [`day-smoke.md`](../proof/phase-2/day-smoke.md). Xác nhận chuyển pha/kế hoạch/kết thúc D1 và D1–D5; không có input gameplay.
+- `python3 -m unittest discover -s tests -v` trên code `fe3930f`: **108/108 OK**.
+- Smoke gather → quan và smoke ngày D1/D1–D5 chạy lại trên `fe3930f`; xem [integration.md](../proof/phase-2/integration.md) và [day-smoke.md](../proof/phase-2/day-smoke.md).
+- HUD check chạy với `$env:PYTHONIOENCODING="utf-8"`: **56/57**; mục trượt là `♥♥♥` va chạm với `Độ sâu 5.5 m` ở 480px.
 
-## Việc còn chặn
+## Đánh giá ngắn
 
-- Hiếu #1: đã tích hợp cá bơi, tăng tuổi và sinh định kỳ tại `d66c50d`; regression có trong `tests/test_gather_fish.py`.
-- Chuẩn #2: chưa có module/thực thể Cá Sấu và test tương ứng.
-- Quân #3: cần kiểm tra hành vi 2 bếp/4 bàn và lọc menu theo kế hoạch ngày. Shop đã có implementation và test từ #4, không còn chặn vòng ngày.
-- Lâm #5: còn thiếu kiểm chứng UI cho các màn hình ngày, HUD v1.1 và menu pause.
-- Khoa #6: regression và smoke chuyển pha đã chạy; cần chạy smoke gameplay sau khi #2–#3 hoàn tất.
+- Đạt: AC-P2-01–07, AC-P2-09. Một phần: AC-P2-08.
+- Còn ngoài phạm vi Khoa #6: hoàn thiện HUD v1.1/chơi tay trọn vòng, retro Phase 2 và 2 mục mở rộng cho cả lab.
