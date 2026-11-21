@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "File kho Chợ Nổi v1.0 (gather -> quan)",
+  "type": "object",
+  "required": ["items"],
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ca_loc": {"type": "integer", "minimum": 0},
+        "ca_linh": {"type": "integer", "minimum": 0},
+        "bong_dien_dien": {"type": "integer", "minimum": 0},
+        "bong_sung": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}
