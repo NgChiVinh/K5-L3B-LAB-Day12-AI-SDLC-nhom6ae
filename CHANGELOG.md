@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+## v1.0.0 — Contract v1.3, "Phát hành" (Phase 4, TICKET-04) — tag `phase-4`, GitHub Release v1.0.0
+
+Gameplay, tuning, kho và JSONL giữ nguyên v1.2. Release notes: [`docs/release-notes-v1.0.0.md`](docs/release-notes-v1.0.0.md).
+
+### Thêm
+- `contract_version: "1.3"`, `bench_cmd` và `soak_cmd` ở gốc manifest (NgChiVinh, PR #13).
+- **Benchmark có render** `python3 -m chonoi.bench --seed 42 --duration 30 --out bench.json`: cảnh lặn lõi render vào
+  framebuffer 1280×720, làm nóng 3 s, 5 trường `avg_fps, p1_low_fps, frames, measured_s, load_ms` (NgChiVinh, PR #14).
+- **Soak** `python3 -m chonoi.soak --seed 7 --days 10 --out soak.json`: 10 Ngày một tiến trình, kế hoạch D1–D5 lặp
+  ở Ngày 6–10, bot tất định (TrungHieuPh, PR #15).
+- **Cảnh báo dễ nhận biết** (THỦY QUÁI Ở GẦN, OXY SẮP HẾT, KHÁCH SẮP GIẬN) và **chế độ tương phản cao** (truclamld).
+- **Đóng gói** `tools/package_release.py`, README (môi trường, lệnh chạy/test/headless/bench/soak), CREDITS, LICENSE
+  (HoangQuan23112004).
+- **Mở rộng 1 — Cháy món** (`burn`, `burn_s: 20`) (HoangQuan23112004); **mở rộng 2 — Bảng xếp hạng** (`leaderboard`)
+  (22520160; `--export-leaderboard` qua `run_cmd` do NgChiVinh bổ sung khi tích hợp, PR #16).
+- Bằng chứng QA bench / soak / regression / smoke (khoa-asta).
+
+### Thay đổi hành vi khi bật mở rộng
+- `extensions: ["burn", "leaderboard"]`: món chín để quá 1200 tick trên bếp bị cháy (`dish_burnt`), nguyên liệu mất,
+  đơn thử giữ lại; `burn_s: null` nếu tắt `burn`.
+
 ## Contract v1.2 — "Mùa Nước Nổi" (Phase 3, TICKET-03) — BREAKING CHANGE
 
 Quyết định, bảng tác động và thứ tự tích hợp: [`docs/adr/0001-kho-ca-the-do-tuoi.md`](docs/adr/0001-kho-ca-the-do-tuoi.md).

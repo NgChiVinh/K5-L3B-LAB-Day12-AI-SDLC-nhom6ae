@@ -54,6 +54,8 @@ python3 -m chonoi.live --mode quan --inventory /tmp/kho.json
 ### Mở rộng đã làm
 - **Cháy món (`burn`)** — khai trong `extensions` của [`game.contract.json`](game.contract.json) với `quan.burn_s: 20` (1200 tick). Món chín trên bếp đúng `1200` tick vẫn bưng được; từ `1201` tick trở đi bị cháy: mất món, bếp `idle` ngay, thử giữ lại nguyên liệu tươi cho đơn (`reserved` hoặc `unfulfillable`) và phát `dish_burnt`. Kiểm chứng bằng test hộp đen trong [`tests/test_p3_quan_fresh_burn.py`](tests/test_p3_quan_fresh_burn.py) (`PYTHONPATH=tests:. python3 -m unittest tests.test_p3_quan_fresh_burn -v`).
 
+- **Bảng xếp hạng cục bộ (`leaderboard`)** — khai trong `extensions`. Lưu bền vững top 10 (`chonoi/leaderboard.py`), sắp điểm giảm dần, hòa thì mục ghi trước đứng trước (kể cả sau khi mở lại). Headless `--mode day` nhận cặp `--leaderboard <store.json> --player-name <tên>`: chỉ ghi một mục khi chạy đủ 5 Ngày chuẩn, không scenario, `reason: days_complete`; thiếu một cờ trong cặp hoặc sai mode → mã 2. Xuất bảng: `python3 -m chonoi.live --mode gather --export-leaderboard out.json [--leaderboard store.json]`. Kiểm chứng: [`tests/test_leaderboard.py`](tests/test_leaderboard.py), [`tests/test_leaderboard_run_cmd.py`](tests/test_leaderboard_run_cmd.py).
+
 ### Sáng tạo của nhóm
 - Ưu tiên hoàn thiện lõi và mở rộng đúng Test Contract; không thêm phần sáng tạo ngoài contract vào headless để bảo toàn tính tất định.
 
