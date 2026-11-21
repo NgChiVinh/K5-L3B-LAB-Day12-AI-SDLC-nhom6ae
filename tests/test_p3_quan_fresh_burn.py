@@ -153,5 +153,57 @@ class BurnExtension(unittest.TestCase):
         self.assertEqual(sim.customers[0]["state"], "waiting")
 
 
+class BurnExtensionHeadless(unittest.TestCase):
+    """Kiểm hộp đen qua headless_cmd với burn_s=20 đã bật trong game.contract.json (AC-P4-06)."""
+
+    def test_headless_burn_boundary_1200_vs_1201(self):
+        dish = {"order_id": "C1", "dish_id": "ca_loc_nuong_trui", "base_price": 60}
+        # Đúng 1200 tick -> vẫn bưng được qua headless
+        with Workdir() as w:
+            block = {
+                "player": {"pos": [2, 8]},
+                "stoves": [{"id": "B1", "state": "ready", "dish": dish, "ready_ticks": 1199}],
+                "customers": [{
+                    "id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui",
+                    "state": "waiting", "order_status": "assigned", "reserved": [], "base_price": 60,
+                }],
+            }
+            rows = run_quan(w, block, 1, [{"tick": 0, "interact": True}])
+            self.assertEqual([e["name"] for e in events(rows)], ["dish_picked"])
+
+        # 1201 tick -> dish_burnt(reserved) khi còn hàng tươi, dish_burnt(unfulfillable) khi hết hàng
+        with Workdir() as w:
+            block = {
+                "stock": [{"id": "I1", "kind": "ca_loc", "fresh": 85}],
+                "stoves": [{"id": "B1", "state": "ready", "dish": dish, "ready_ticks": 1200}],
+                "customers": [{
+                    "id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui",
+                    "state": "waiting", "order_status": "assigned", "reserved": [], "base_price": 60,
+                }],
+            }
+            rows = run_quan(w, block, 1)
+            burnt = events(rows, "dish_burnt")
+            self.assertEqual(len(burnt), 1)
+            self.assertEqual(burnt[0]["data"], {
+                "stove_id": "B1", "order_id": "C1", "dish_id": "ca_loc_nuong_trui", "order_status": "reserved",
+            })
+            s1 = snap_at(rows, 1)
+            self.assertEqual(s1["stoves"][0]["state"], "idle")
+            self.assertEqual(s1["customers"][0]["reserved"], ["I1"])
+
+        with Workdir() as w:
+            block = {
+                "stock": [],
+                "stoves": [{"id": "B1", "state": "ready", "dish": dish, "ready_ticks": 1200}],
+                "customers": [{
+                    "id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui",
+                    "state": "waiting", "order_status": "assigned", "reserved": [], "base_price": 60,
+                }],
+            }
+            rows = run_quan(w, block, 1)
+            burnt = events(rows, "dish_burnt")
+            self.assertEqual(burnt[0]["data"]["order_status"], "unfulfillable")
+
+
 if __name__ == "__main__":
     unittest.main()
