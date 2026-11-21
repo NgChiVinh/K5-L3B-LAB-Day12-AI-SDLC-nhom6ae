@@ -40,6 +40,8 @@ class QuanSim:
         raw_stock = inventory if inventory is not None else scenario.get("stock", {})
         self.stock = {k: int(v) for k, v in raw_stock.items() if v > 0}
         self.hand = dict(scenario["hand"]) if scenario.get("hand") is not None else None
+        if self.hand is not None and self.menu_filter is not None and self.hand.get("dish_id") not in self.menu_filter:
+            raise BadInput(f"hand: món {self.hand.get('dish_id')} không thuộc kế hoạch ngày")
         self.time_left_ticks = scenario.get("time_left_ticks", int(round(t["duration_s"] * TICK)))
         self.reputation = float(scenario.get("reputation", t["reputation_initial"]))
         self.phase_tick = 0  # lịch khách tính theo phase_tick sau tăng (PRD mục F)
@@ -55,6 +57,10 @@ class QuanSim:
             }
             for s in self._merge(t["stoves"], scenario.get("stoves", []))
         ]
+        if self.menu_filter is not None:
+            for s in self.stoves:
+                if s["dish"] is not None and s["dish"].get("dish_id") not in self.menu_filter:
+                    raise BadInput(f"stoves.{s['id']}: món {s['dish'].get('dish_id')} không thuộc kế hoạch ngày")
         self.tables = [
             {"id": tb["id"], "pos": [float(c) for c in tb["pos"]]}
             for tb in self._merge(t["tables"], scenario.get("tables", []))
@@ -83,6 +89,8 @@ class QuanSim:
             dish_id = raw.get("dish_id")
             if dish_id not in self.menu:
                 raise BadInput(f"customers.{raw['id']}: dish_id không hợp lệ: {dish_id}")
+            if self.menu_filter is not None and dish_id not in self.menu_filter:
+                raise BadInput(f"customers.{raw['id']}: món {dish_id} không thuộc kế hoạch ngày")
             state = raw.get("state", "waiting")
             order_status = raw.get("order_status", "served" if state == "eating" else "reserved")
             has_reserved = "reserved" in raw
