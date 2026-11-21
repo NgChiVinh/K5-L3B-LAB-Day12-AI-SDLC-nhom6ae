@@ -33,7 +33,7 @@ let DRY = false;  // lượt đo chiều cao HUD: không vẽ gì
 let screen = "menu";        // menu | play | quit
 let menuIdx = 0;            // 0 = Chơi, 1 = Thoát
 let intro = null;           // {kind, until} khi đang hiện DayIntro / EveningIntro / DayResult
-let shownDay = 0, lastPhase = null, showLog = false;
+let shownDay = 0, lastPhase = null, showLog = false, highContrast = false;
 const stats = { served: 0, left: 0, tips: 0, shift: 0, repStart: null, repEnd: null, earnedAtQuan: 0, best: {}, shopMsg: "" };
 const seen = new Set();
 
@@ -87,6 +87,7 @@ addEventListener("keydown", (e) => {
     return;
   }
   if (screen === "quit") { if (k === "enter") screen = "menu"; return; }
+  if (k === "h") { highContrast = !highContrast; return; }
   if (intro) { closeIntro(); return; }          // DayIntro/EveningIntro/DayResult: nhấn phím bất kỳ để tiếp
   if (snap && snap.mode === "day" && snap.finished && k === "m") { screen = "menu"; menuIdx = 0; return; }  // Tổng kết
   if (paused()) {                               // menu pause
@@ -255,6 +256,16 @@ function promptBox(w, h, message, color = "#fff0ae") {
   panel(x, y, width, height, "rgba(10,24,32,.94)");
   fitText(message, w / 2, y + 34, width - 32, { size: 22, align: "center", color, bold: true });
 }
+function warningBanner(w, h, message, kind) {
+  const palette = highContrast
+    ? { monster: ["#fff", "#790000"], oxygen: ["#111", "#ffdf00"], patience: ["#111", "#ffdf00"] }
+    : { monster: ["#fff", "#6d287f"], oxygen: ["#fff", "#9b271f"], patience: ["#fff", "#8a4b00"] };
+  const [fg, bg] = palette[kind];
+  const width = Math.min(w - 24, 560), x = (w - width) / 2, y = Math.max(8, h - 118);
+  ctx.fillStyle = bg; ctx.fillRect(x, y, width, 48);
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = highContrast ? 4 : 2; ctx.strokeRect(x + 1, y + 1, width - 2, 46);
+  fitText(message, w / 2, y + 32, width - 24, { size: 22, align: "center", color: fg, bold: true });
+}
 
 // ---------- màn hình ----------
 function drawMenu(w, h) {
@@ -407,15 +418,18 @@ function drawQuanHud(w) {
   // Món và kiên nhẫn từng bàn; đổi màu khi kiên nhẫn < 25%.
   let x = 26;
   if (!customers.length) text("Chưa có khách", 26, y, { color: "#cbd8d8" });
+  let angry = false;
   for (const c of customers) {
     const eating = c.state === "eating", frac = (c.patience_ticks_left || 0) / patMax;
     const s = c.table_id + ": " + (c.dish_id ? dn(c.dish_id) : "đang chọn món") +
               (eating ? " · đang ăn " + Math.ceil((c.eat_ticks_left || 0) / 60) + "s" : " · " + Math.ceil((c.patience_ticks_left || 0) / 60) + "s");
+    if (!eating && frac <= 0.25) angry = true;
     const sw = measure(s);
     if (x > 26 && x + sw > maxX) { x = 26; y += 28; }
     fitText(s, x, y, maxX - x, { color: eating ? "#a5e3b0" : frac < 0.25 ? (blinkOn() ? "#ff5252" : "#ffcdd2") : "#f5e4d3" });
     x += sw + 22;
   }
+  if (angry) warningBanner(w, innerHeight, "⚠ KHÁCH SẮP GIẬN · PHỤC VỤ SỚM", "patience");
   y += 32;
   const hand = snap.hand ? dn(typeof snap.hand === "string" ? snap.hand : snap.hand.dish_id) : "Tay trống";
   fitText("ĐANG CẦM: " + hand, 26, y, maxX - 26, { color: "#ffcf8b", bold: true });
@@ -482,13 +496,19 @@ function drawGather(w, h) {
   const nearMonster = (snap.monsters || []).some((m) => m.pos && Math.hypot(m.pos[0] - pp[0], m.pos[1] - pp[1]) <= 10);
   const nearNode = p && p.at_surface && (snap.nodes || []).some((n) => n.ready !== false && Math.hypot(n.pos[0] - pp[0], n.pos[1] - pp[1]) <= (meta.interact_radius || 2));
   const nearDock = Math.hypot(dp[0] - pp[0], dp[1] - pp[1]) <= dr;
-  if (nearMonster) { ctx.strokeStyle = blinkOn() ? "#bd71dc" : "#7d3f99"; ctx.lineWidth = 8; ctx.strokeRect(4, 4, w - 8, h - 8); promptBox(w, h, "Thủy quái!", "#efb4ff"); }
-  else if (p && p.oxygen_ticks === 0 && !p.at_surface) promptBox(w, h, "Hết hơi!", "#ffaaaa");
+  const lowOxygen = p && !p.at_surface && p.oxygen_ticks <= (p.oxygen_max_ticks || 0) * 0.25;
+  if (nearMonster) { ctx.strokeStyle = highContrast ? "#fff" : (blinkOn() ? "#bd71dc" : "#7d3f99"); ctx.lineWidth = highContrast ? 10 : 8; ctx.strokeRect(4, 4, w - 8, h - 8); warningBanner(w, h, "⚠ THỦY QUÁI Ở GẦN", "monster"); }
+  else if (lowOxygen) {
+    ctx.strokeStyle = highContrast ? "#ffdf00" : (blinkOn() ? "#ff5252" : "#8f2929");
+    ctx.lineWidth = highContrast ? 10 : 8;
+    ctx.strokeRect(4, 4, w - 8, h - 8);
+    warningBanner(w, h, "⚠ OXY SẮP HẾT · LÊN MẶT NƯỚC", "oxygen");
+  }
   else if (nearDock) promptBox(w, h, "E · cập bến (về quán)");
   else if (nearNode) promptBox(w, h, "E · hái nguyên liệu");
   panel(12, 10, Math.max(280, w - 24), hudBottom - 6);
   drawGatherHud(w);
-  fitText("WASD/↑↓ bơi · E hái/cập bến · Space bắt cá · Esc tạm dừng", w - 16, h - 18, w - 32, { align: "right", color: "#d4e0e5" });
+  fitText("WASD/↑↓ bơi · E hái/cập bến · Space bắt cá · Esc tạm dừng · H tương phản " + (highContrast ? "CAO" : "thường"), w - 16, h - 18, w - 32, { align: "right", color: highContrast ? "#fff" : "#d4e0e5", bold: highContrast });
 }
 
 // ----- cảnh QUÁN: nhìn từ trên xuống, x sang phải, z lên (bắc) -----
@@ -533,7 +553,7 @@ function drawQuan(w, h) {
   }
   panel(12, 10, Math.max(280, w - 24), hudBottom - 6);
   drawQuanHud(w);
-  fitText("WASD/↑↓ đi · E nấu/bưng/phục vụ · Esc tạm dừng", w - 16, h - 14, w - 32, { align: "right", color: "#f0e3ca" });
+  fitText("WASD/↑↓ đi · E nấu/bưng/phục vụ · Esc tạm dừng · H tương phản " + (highContrast ? "CAO" : "thường"), w - 16, h - 14, w - 32, { align: "right", color: highContrast ? "#fff" : "#f0e3ca", bold: highContrast });
 }
 
 function frame() {
