@@ -13,7 +13,8 @@
 ## Đề bài (đọc trước khi code)
 - Phase 1: [`docs/prd/phase-1.md`](docs/prd/phase-1.md) — PRD-0 + Test Contract v1.0 (luật từng bước ở mục F, sự kiện ở mục E, scenario ở mục D).
 - Kế hoạch / chia lát: [`docs/plan/phase-1.md`](docs/plan/phase-1.md), người làm ở [`TEAM.md`](TEAM.md).
-- **Phase 3 (đang làm):** [`docs/prd/phase-3.md`](docs/prd/phase-3.md) — TICKET-03 kho cá thể + độ tươi (Contract v1.2). Quyết định + bảng tác động + thứ tự tích hợp: [`docs/adr/0001-kho-ca-the-do-tuoi.md`](docs/adr/0001-kho-ca-the-do-tuoi.md). Làm trên nhánh `v1.2`, KHÔNG push v1.2 thẳng `main`.
+- **Phase 4 (đang làm):** [`docs/prd/phase-4.md`](docs/prd/phase-4.md) — TICKET-04 phát hành v1.0.0 (bench, soak, cảnh báo + tương phản cao, đóng gói, Release). Kế hoạch: [`docs/plan/phase-4.md`](docs/plan/phase-4.md). Nhánh ngắn → PR vào `main`.
+- **Phase 3:** [`docs/prd/phase-3.md`](docs/prd/phase-3.md) — TICKET-03 kho cá thể + độ tươi (Contract v1.2). Quyết định + bảng tác động + thứ tự tích hợp: [`docs/adr/0001-kho-ca-the-do-tuoi.md`](docs/adr/0001-kho-ca-the-do-tuoi.md). Làm trên nhánh `v1.2`, KHÔNG push v1.2 thẳng `main`.
 - **Phase 2:** [`docs/prd/phase-2.md`](docs/prd/phase-2.md) — TICKET-02 + Test Contract v1.1 (số chuẩn mục 1, vòng ngày/Shop mục 2, thứ tự xử lý mục 4.5). Kế hoạch: [`docs/plan/phase-2.md`](docs/plan/phase-2.md).
 
 ## Cấu trúc & quy ước
