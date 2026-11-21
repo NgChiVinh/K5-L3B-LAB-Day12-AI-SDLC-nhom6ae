@@ -26,19 +26,21 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KIND = {"ca_loc": "cá lóc", "ca_linh": "cá linh", "bong_dien_dien": "điên điển", "bong_sung": "bông súng"}
 D = {"order_id": "C1", "dish_id": "lau_ca_linh_dien_dien", "base_price": 120}
 C = {"id": "C1", "table_id": "T1", "dish_id": "lau_ca_linh_dien_dien"}
+ITEMS = lambda *pairs: [{"id": f"I{i + 1}", "kind": kind, "fresh": fresh} for i, (kind, fresh) in enumerate(pairs)]
 STATES = [  # (tên, mode, scenario, inventory, inputs, tick lấy snapshot)
-    ("gather_lan_2s", "gather", None, None, {"frames": [{"tick": 0, "move": [1, 1]}]}, 120),
-    ("quan_khach_vua_den", "quan", None, {"items": {"ca_loc": 2, "bong_sung": 4, "ca_linh": 3, "bong_dien_dien": 1}},
+    ("gather_lan_2s", "gather", {"hold": ITEMS(("ca_linh", 100), ("bong_sung", 29.5)), "random_fish": False, "nodes": []}, None,
+     {"frames": [{"tick": 0, "move": [1, 1]}]}, 120),
+    ("quan_khach_vua_den", "quan", None, {"items": ITEMS(("ca_loc", 100), ("ca_loc", 97.5), ("bong_sung", 75), ("bong_sung", 75), ("ca_linh", 90), ("ca_linh", 90), ("bong_dien_dien", 100))},
      None, 130),
-    ("quan_bep_dang_nau", "quan", {"random_customers": False, "stock": {"ca_loc": 2, "bong_sung": 4},
+    ("quan_bep_dang_nau", "quan", {"random_customers": False, "stock": ITEMS(("ca_loc", 100), ("bong_sung", 96), ("bong_sung", 70), ("ca_linh", 84)),
      "stoves": [{"id": "B1", "state": "cooking", "dish": D, "cook_ticks_left": 400}],
-     "customers": [dict(C, order_status="assigned", reserved={}, base_price=120, patience_ticks_left=2500)]},
+     "customers": [dict(C, order_status="assigned", reserved=[], base_price=120, patience_ticks_left=2500)]},
      None, None, 0),
-    ("quan_dang_cam_mon", "quan", {"random_customers": False, "stock": {"ca_loc": 2}, "hand": D,
-     "customers": [dict(C, order_status="assigned", reserved={}, base_price=120, patience_ticks_left=900)]},
+    ("quan_dang_cam_mon", "quan", {"random_customers": False, "stock": ITEMS(("ca_loc", 100)), "hand": D,
+     "customers": [dict(C, order_status="assigned", reserved=[], base_price=120, patience_ticks_left=900)]},
      None, None, 0),
-    ("quan_khach_dang_an", "quan", {"random_customers": False, "stock": {}, "reputation": 4.2,
-     "customers": [dict(C, state="eating", order_status="served", reserved={}, base_price=120, tip=24,
+    ("quan_khach_dang_an", "quan", {"random_customers": False, "stock": ITEMS(("ca_loc", 29)), "reputation": 4.2,
+     "customers": [dict(C, state="eating", order_status="served", reserved=[], base_price=120, tip=24,
                         eat_ticks_left=300)]}, None, None, 0),
 ]
 REQUIRED = {  # DoD PRD-0: HUD tối thiểu
@@ -48,6 +50,24 @@ REQUIRED = {  # DoD PRD-0: HUD tối thiểu
              ("trạng thái bếp", r"^B1: "), ("món trên tay", r"^ĐANG CẦM: "), ("tiền", r"^Tiền -?\d+k$"),
              ("uy tín", r"^Uy tín \d+\.\d/5$")],
 }
+FRESH_REQUIRED = {
+    "gather": ("độ tươi trong giỏ / dấu hàng ươn", r"\d{1,3}%|ƯƠN"),
+    "quan": ("độ tươi trong kho / dấu hàng ươn", r"\d{1,3}%|ƯƠN"),
+}
+
+
+def available_text(snap):
+    stock = snap.get("stock") or []
+    if isinstance(stock, list):
+        reserved = {item_id for c in snap.get("customers", []) for item_id in c.get("reserved", []) if isinstance(c.get("reserved"), list)}
+        items = [i for i in stock if i.get("id") not in reserved]
+        labels = [f"{KIND.get(i['kind'], i['kind'])} {round(float(i['fresh']))}%" + (" · ƯƠN" if float(i["fresh"]) < 30 else "") for i in items]
+        return " · ".join(labels) or "Trống"
+    avail = dict(stock)
+    for c in snap.get("customers", []):
+        if isinstance(c.get("reserved"), dict):
+            for k, q in c["reserved"].items(): avail[k] = avail.get(k, 0) - q
+    return " · ".join(f"{KIND[k]} ×{v}" for k, v in sorted(avail.items()) if v > 0) or "Trống"
 
 
 def _git(*args):
@@ -128,12 +148,13 @@ def main(argv=None) -> int:
                 hud_text[name] = strings
                 for label, pat in REQUIRED[mode]:
                     checks.append((name, f"có trường HUD: {label}", any(re.search(pat, s) for s in strings), ""))
+                freshness_label, freshness_pat = FRESH_REQUIRED[mode]
+                fresh_items = (snap.get("hold", []) if mode == "gather" else snap.get("stock", []))
+                fresh_present = isinstance(fresh_items, list) and any("fresh" in i for i in fresh_items)
+                shown_fresh = any(re.search(freshness_pat, s, re.I) for s in strings)
+                checks.append((name, f"hiện {freshness_label}", fresh_present and shown_fresh, "snapshot không có cá thể hoặc HUD thiếu %/ƯƠN"))
                 if mode == "quan":
-                    avail = dict(snap["stock"])
-                    for c in snap["customers"]:
-                        for k, q in c.get("reserved", {}).items():
-                            avail[k] = avail.get(k, 0) - q
-                    want = " · ".join(f"{KIND[k]} ×{v}" for k, v in sorted(avail.items()) if v > 0) or "Trống"
+                    want = available_text(snap)
                     i = strings.index("KHO KHẢ DỤNG") if "KHO KHẢ DỤNG" in strings else -1
                     got = strings[i + 1] if i >= 0 else None
                     checks.append((name, "kho khả dụng = tồn − giữ chỗ", got == want, f"HUD: {got!r}, cần: {want!r}"))

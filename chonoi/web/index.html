@@ -163,9 +163,27 @@ const UP_NAME = { oxygen: "Bình oxy", hp: "Áo phao" };
 const FAIL = { funds: "không đủ tiền", max_level: "đã tối đa", unknown: "lệnh không hỗ trợ", out_of_stock: "hết hàng" };
 // Kho khả dụng = tồn vật lý − phần khách đang giữ chỗ (PRD mục F, Quán bước 5; contracts mục 3).
 function availableStock(stock, customers) {
+  // v1.2 stock/reserved are individual items; retain v1.1 support while phases integrate.
+  if (Array.isArray(stock)) {
+    const reserved = new Set((customers || []).flatMap((c) => Array.isArray(c.reserved) ? c.reserved : []));
+    return stock.filter((item) => !reserved.has(item.id));
+  }
   const out = Object.assign({}, stock || {});
   (customers || []).forEach((c) => Object.keys(c.reserved || {}).forEach((k) => { out[k] = (out[k] || 0) - c.reserved[k]; }));
   return out;
+}
+function itemSummary(items, { includeFresh = false, availableOnly = false } = {}) {
+  if (!Array.isArray(items)) return Object.keys(items || {}).map((k) => `${KIND_NAME[k] || k} ×${items[k]}`).join(" · ") || "Trống";
+  let list = items;
+  if (availableOnly) {
+    const reserved = new Set((snap.customers || []).flatMap((c) => Array.isArray(c.reserved) ? c.reserved : []));
+    list = list.filter((item) => !reserved.has(item.id));
+  }
+  return list.map((item) => {
+    const stale = Number(item.fresh) < Number((snap.freshness || {}).spoiled_below ?? 30);
+    const label = `${KIND_NAME[item.kind] || item.kind}${includeFresh ? ` ${Math.round(Number(item.fresh))}%` : ""}${stale ? " · ƯƠN" : ""}`;
+    return label;
+  }).join(" · ") || "Trống";
 }
 const blinkOn = () => Math.floor(performance.now() / 250) % 2 === 0;
 
@@ -262,7 +280,11 @@ function dayLines() {
 }
 function cookable(stock) {
   const plan = (snap.day_plan && snap.day_plan.dishes) || snap.menu || {}, menu = snap.menu || {};  // công thức từ contract
-  return Object.keys(plan).filter((id) => menu[id] && Object.keys(menu[id].recipe).every((k) => (stock[k] || 0) >= menu[id].recipe[k])).map(dn);
+  const counts = Array.isArray(stock) ? stock.reduce((a, item) => {
+    if (Number(item.fresh) >= Number((snap.freshness || {}).spoiled_below ?? 30)) a[item.kind] = (a[item.kind] || 0) + 1;
+    return a;
+  }, {}) : stock || {};
+  return Object.keys(plan).filter((id) => menu[id] && Object.keys(menu[id].recipe).every((k) => (counts[k] || 0) >= menu[id].recipe[k])).map(dn);
 }
 function drawIntro(w, h) {
   const left = Math.max(0, Math.ceil((intro.until - performance.now()) / 1000));
@@ -270,9 +292,9 @@ function drawIntro(w, h) {
   if (intro.kind === "day") {
     statusCard(w, h, `NGÀY ${snap.day} · MÁ TƯ DẶN`, "Hôm nay quán định nấu:", dayLines(), "#f0cf88", foot);
   } else if (intro.kind === "evening") {
-    const stock = snap.stock || {}, can = cookable(stock);
+    const stock = snap.stock || [], can = cookable(stock);
     statusCard(w, h, "HÀNG ĐÃ VỀ BẾN", "Kho nhập cho quán tối nay", [
-      "Nhập kho: " + (Object.keys(stock).map((k) => `${KIND_NAME[k] || k} ×${stock[k]}`).join(", ") || "trống"),
+      "Nhập kho: " + itemSummary(stock, { includeFresh: true }),
       "Món nấu được: " + (can.join(", ") || "chưa đủ nguyên liệu món nào")], "#9bd5dc", foot);
   } else {
     const delta = stats.repEnd !== null && stats.repStart !== null ? (stats.repEnd - stats.repStart) : 0;
@@ -336,13 +358,16 @@ function drawGatherHud(w) {
   ];
   const yTop = 38;
   let y = flow(items, 26, yTop, maxX, 32);
+  const hold = snap.hold || [];
   const got = {};
-  (snap.hold || []).forEach((k) => { got[k] = (got[k] || 0) + 1; });
+  if (Array.isArray(hold)) hold.forEach((item) => { const kind = typeof item === "string" ? item : item.kind; got[kind] = (got[kind] || 0) + 1; });
+  else Object.assign(got, hold);
   y += 32;
-  const g = "GIỎ " + (snap.hold_count ?? (snap.hold || []).length) + "/" + (snap.hold_capacity || "—");
+  const g = "GIỎ " + (snap.hold_count ?? (Array.isArray(hold) ? hold.length : Object.values(hold).reduce((a, n) => a + n, 0))) + "/" + (snap.hold_capacity || "—");
   text(g, 26, y, { color: "#b8c8cc", bold: true });
   const gw = measure(g, { bold: true }) + 16;
-  fitText(Object.keys(got).map((k) => (KIND_NAME[k] || k) + " ×" + got[k]).join(" · ") || "Trống", 26 + gw, y, maxX - 26 - gw, { color: "#f1dfae" });
+  fitText(Array.isArray(hold) ? itemSummary(hold, { includeFresh: true }) : Object.keys(got).map((k) => (KIND_NAME[k] || k) + " ×" + got[k]).join(" · ") || "Trống",
+          26 + gw, y, maxX - 26 - gw, { color: "#f1dfae" });
   const need = (snap.day_plan && snap.day_plan.ingredients) || null;
   if (need) {
     y += 32;
@@ -369,7 +394,7 @@ function drawQuanHud(w) {
   const avail = availableStock(snap.stock, customers);
   text("KHO KHẢ DỤNG", 26, y, { color: "#b8c8cc", bold: true });
   const kw = measure("KHO KHẢ DỤNG", { bold: true }) + 16;
-  fitText(Object.keys(avail).sort().filter((k) => avail[k] > 0).map((k) => (KIND_NAME[k] || k) + " ×" + avail[k]).join(" · ") || "Trống",
+  fitText(Array.isArray(avail) ? itemSummary(avail, { includeFresh: true }) : Object.keys(avail).sort().filter((k) => avail[k] > 0).map((k) => (KIND_NAME[k] || k) + " ×" + avail[k]).join(" · ") || "Trống",
           26 + kw, y, maxX - 26 - kw, { color: "#d6edda" });
   y += 32;
   const stoveText = stoves.map((s) => {
