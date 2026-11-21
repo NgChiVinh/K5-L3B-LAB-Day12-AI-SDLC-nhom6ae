@@ -7,6 +7,7 @@
 - Headless: `python3 -m chonoi.headless --mode gather|quan --seed 1 --ticks 600 --out out.jsonl`
 - Chơi thử trên trình duyệt: `python3 -m chonoi.live --mode gather|quan` (mở địa chỉ in ra; WASD, E, Space, R)
 - Smoke hai tiến trình + bằng chứng: `python3 tools/smoke_proof.py --phase phase-1` (ghi `docs/proof/phase-1/`)
+- Kiểm HUD + bằng chứng (cần Node.js): `python3 tools/hud_check.py --phase phase-1` (ghi `docs/proof/phase-1/hud.md`)
 - Windows (Git Bash): `PYTHONPATH="tests;."` (dấu `;`), cần lệnh `python3` cho test hộp đen; không sửa `headless_cmd` trong contract.
 
 ## Đề bài (đọc trước khi code)
@@ -36,5 +37,6 @@
 |---|---|---|
 | `run-tests` | [`.agents/skills/run-tests/SKILL.md`](.agents/skills/run-tests/SKILL.md) | Sau mỗi thay đổi ở `chonoi/` hoặc `tests/`, trước khi push lên `main` và trước khi gắn tag. Chạy cả bộ bằng 1 lệnh, báo từng test hỏng, không sửa test cho xanh. |
 | `smoke-proof` | [`.agents/skills/smoke-proof/SKILL.md`](.agents/skills/smoke-proof/SKILL.md) + [`tools/smoke_proof.py`](tools/smoke_proof.py) | Phút 25 (thử xuất kho thật), phút 45–55 (trước tag), khi đổi hợp đồng kho. Chạy smoke gather → quan của PRD mục G, lưu bằng chứng vào `docs/proof/<phase>/`. |
+| `hud_check` (tool) | [`tools/hud_check.py`](tools/hud_check.py) + [`tools/hud_harness.js`](tools/hud_harness.js) | Sau khi sửa `chonoi/web/` hoặc đổi trường snapshot, và trước tag. Dựng 5 trạng thái thật bằng headless, vẽ HUD ở 4 bề rộng bằng canvas giả: kiểm lỗi vẽ, chữ đè/tràn, đủ trường HUD tối thiểu DoD, kho khả dụng; ghi `docs/proof/<phase>/hud.md`. Cần Node.js. |
 
 Cách viết test cho một lát (mẫu: `tests/test_gather_lat1.py`): đọc mục F của PRD → viết test hộp đen qua headless trước, thấy fail đúng lý do → viết luật → chạy `run-tests`.
