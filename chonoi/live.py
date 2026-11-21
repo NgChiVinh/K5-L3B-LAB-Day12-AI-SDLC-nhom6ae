@@ -226,7 +226,22 @@ def main(argv=None) -> int:
     p.add_argument("--scenario")
     p.add_argument("--inventory", help="chỉ với quan: nạp kho từ file")
     p.add_argument("--inventory-out", dest="inventory_out", help="chỉ với gather: ghi kho khi kết thúc buổi")
+    # Mở rộng leaderboard (TICKET-04): <run_cmd> --export-leaderboard <out.json> [--leaderboard <store.json>]
+    p.add_argument("--export-leaderboard", dest="export_leaderboard", metavar="OUT_JSON")
+    p.add_argument("--leaderboard", help="file xếp hạng (mặc định leaderboard.json)")
     a = p.parse_args(argv)
+    if a.export_leaderboard:  # chỉ xuất bảng đã sắp, không mở máy chủ
+        from .leaderboard import DEFAULT_STORE, export as export_leaderboard
+        store = a.leaderboard or DEFAULT_STORE
+        if os.path.abspath(store) == os.path.abspath(a.export_leaderboard):
+            sys.stderr.write("lỗi leaderboard: store và file export phải khác đường dẫn\n")
+            return 2
+        try:
+            export_leaderboard(store, a.export_leaderboard)
+        except (OSError, ValueError) as e:
+            sys.stderr.write(f"lỗi leaderboard: {e}\n")
+            return 1
+        return 0
     try:
         if a.inventory and a.mode != "quan":
             raise BadInput("--inventory chỉ dùng với quan")
