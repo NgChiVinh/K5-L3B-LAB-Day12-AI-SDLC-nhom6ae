@@ -95,7 +95,11 @@ def main(argv=None) -> int:
         ok = ([(i["id"], i["kind"]) for i in items] == [(h["id"], h["kind"]) for h in HOLD]
               and all(abs(i["fresh"] - FRESH_AFTER_1) < 1e-9 for i in items))
         check("file kho đúng id/kind, fresh hao 1 bước", ok, json.dumps(inv, ensure_ascii=False))
-        check("file kho = gather_end.inventory", inv is not None and inv == end.get("inventory"))
+        ev_items = (end.get("inventory") or {}).get("items") or []
+        # JSONL làm tròn 3 chữ số; file kho giữ float đầy đủ -> id/kind khớp chính xác, fresh dung sai ±0.01 (TICKET-03)
+        same = (len(items) == len(ev_items) and all(a["id"] == b["id"] and a["kind"] == b["kind"]
+                                                    and abs(a["fresh"] - b["fresh"]) <= 0.01 for a, b in zip(items, ev_items)))
+        check("file kho = gather_end.inventory (id, kind; fresh ±0.01)", same)
         rc = run(r_args)
         check("chạy lại cùng seed giống từng byte", rc == 0 and filecmp.cmp(p("gather.jsonl"), p("gather-rerun.jsonl"), shallow=False))
         os.remove(p("gather-rerun.jsonl")) if os.path.exists(p("gather-rerun.jsonl")) else None
