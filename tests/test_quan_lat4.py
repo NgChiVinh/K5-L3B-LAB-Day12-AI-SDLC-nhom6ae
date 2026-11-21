@@ -115,10 +115,12 @@ class PickAndInteractPriority(unittest.TestCase):
             self.assertIsNone(s1["stoves"][0]["dish"])
             self.assertEqual(s1["stoves"][0]["ready_ticks"], 0)
 
-        # Tay đã đầy (cầm món khác) -> không bưng thêm được
+        # Tay cầm món của đơn C2 không có khách = "liên kết thiếu" (PRD mục D) -> fixture mâu thuẫn, mã 2.
+        # Với 1 bàn chỉ có 1 khách nên "tay đầy + bếp ready" không dựng được bằng fixture hợp lệ ở P1.
         with Workdir() as w:
             other = {"order_id": "C2", "dish_id": "goi_bong_sung", "base_price": 40}
             block = {
+                "random_customers": False,
                 "player": {"pos": STOVE_POS},
                 "hand": other,
                 "stoves": [{"id": "B1", "state": "ready", "dish": dish, "ready_ticks": 5}],
@@ -127,23 +129,23 @@ class PickAndInteractPriority(unittest.TestCase):
                     "state": "waiting", "order_status": "assigned", "reserved": {}, "base_price": 60,
                 }],
             }
-            rows = run_quan(w, block, 1, [{"tick": 0, "interact": True}])
-            self.assertEqual(events(rows, "dish_picked"), [])
-            self.assertEqual(snap_at(rows, 1)["hand"], other)
-            self.assertEqual(snap_at(rows, 1)["stoves"][0]["state"], "ready")
+            sc = write_json(w.path("sc.json"), {"quan": block})
+            code, _ = run_headless("--mode", "quan", "--seed", "1", "--ticks", "1", "--scenario", sc,
+                                   "--out", w.path("o.jsonl"))
+            self.assertEqual(code, 2)
 
     def test_interact_prefers_stove_over_table_on_equal_distance_and_skips_if_unusable(self):
         """Cùng khoảng cách: chọn bếp trước bàn. Nếu đối tượng gần nhất không tương tác được thì bỏ lượt."""
         dish = {"order_id": "C1", "dish_id": "ca_loc_nuong_trui", "base_price": 60}
         # Đặt bếp B1 ở [5, 5], bàn T1 ở [7, 5], người chơi ở [6, 5] (cùng cách 1.0 m <= 1.5 m).
-        # Bếp đang cooking (không tương tác được), bàn lại có thể phục vụ -> phải chọn bếp và BỎ LƯỢT.
+        # Bếp idle nhưng không còn đơn reserved (C1 đã assigned) -> không tương tác được; bàn lại có thể
+        # phục vụ -> phải chọn bếp và BỎ LƯỢT. (Trước dùng bếp cooking đơn C9 không có khách = fixture
+        # mâu thuẫn theo PRD mục D, scenario.py trả mã 2.)
         with Workdir() as w:
             block = {
                 "player": {"pos": [6, 5]},
                 "hand": dish,
-                "stoves": [{"id": "B1", "pos": [5, 5], "state": "cooking",
-                            "dish": {"order_id": "C9", "dish_id": "goi_bong_sung", "base_price": 40},
-                            "cook_ticks_left": 50}],
+                "stoves": [{"id": "B1", "pos": [5, 5], "state": "idle"}],
                 "tables": [{"id": "T1", "pos": [7, 5]}],
                 "customers": [{
                     "id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui",

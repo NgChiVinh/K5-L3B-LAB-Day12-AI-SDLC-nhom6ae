@@ -1,8 +1,9 @@
 """Buổi tối — Mở Quán (`quan`). KHUNG + Lát 4.
 
 Nhóm viết tiếp (PRD-0 mục F, Quán; hợp đồng lát 3 ↔ 4 ở docs/contracts/README.md §4):
-  TODO(nhóm, lát 3): khách đến theo lịch (bước 5), chọn món nấu được, giữ chỗ nguyên liệu,
-                     no_dish, kiểm scenario quán (scenario.py).
+  XONG (lát 3, 22520160 — tests/test_quan_lat3.py): khách đến theo lịch (bước 5), chọn món
+                     nấu được theo seed, giữ chỗ nguyên liệu, no_dish, random_customers,
+                     kiểm scenario quán (scenario.py).
   XONG (lát 4, HoangQuan23112004 — tests/test_quan_lat4.py):
                      đếm giờ bếp/ăn/ready_ticks, dish_ready, interact bếp/bàn
                      (cook_started, dish_picked, served), boa, ăn xong trả tiền (paid),
@@ -39,6 +40,8 @@ class QuanSim:
         self.hand = dict(scenario["hand"]) if scenario.get("hand") is not None else None
         self.time_left_ticks = scenario.get("time_left_ticks", int(round(t["duration_s"] * TICK)))
         self.reputation = float(scenario.get("reputation", t["reputation_initial"]))
+        self.phase_tick = 0  # lịch khách tính theo phase_tick sau tăng (PRD mục F)
+        self.random_customers = scenario.get("random_customers", True)
         self.stoves = [
             {
                 "id": s["id"],
@@ -57,6 +60,13 @@ class QuanSim:
         self.customers = self._init_customers(scenario.get("customers", []))
         for e in self.customers:
             ids.reserve(e["id"])
+        # Mục D: tổng phần giữ (kể cả reserved khai sẵn) không được vượt tồn -> mã 2
+        reserved = {}
+        for c in self.customers:
+            for kind, quantity in c["reserved"].items():
+                reserved[kind] = reserved.get(kind, 0) + quantity
+        if any(quantity > self.stock.get(kind, 0) for kind, quantity in reserved.items()):
+            raise BadInput("khách giữ chỗ vượt tồn kho")
         self.money = 0
         self.earned = 0
         self.shift_earned = 0
@@ -183,6 +193,7 @@ class QuanSim:
     # --- một bước (PRD-0 mục F, Quán) -------------------------------------------
     def step(self, inp):
         events = []
+        self.phase_tick += 1
         # 1. Tăng đồng hồ, giảm timer ca, nấu, ăn và kiên nhẫn.
         #    Chỉ tăng ready_ticks cho món đã ready ở đầu bước.
         self.time_left_ticks = max(0, self.time_left_ticks - 1)
@@ -215,8 +226,39 @@ class QuanSim:
         # 4. Theo id bàn: ăn xong trả tiền, hết kiên nhẫn (khi còn giờ), đóng ca (closing) và quan_end.
         self._resolve_customers_and_close(events)
 
-        # 5. TODO(nhóm, lát 3): nếu self.time_left_ticks > 0, xét lịch khách theo phase_tick, no_dish.
+        # 5. (lát 3) Còn giờ: lịch khách theo phase_tick sau tăng; khách sinh cuối bước tham gia từ bước sau.
+        if self.time_left_ticks > 0 and self.random_customers and self._customer_due():
+            self._spawn_customer(events)
         return events
+
+    def _customer_due(self) -> bool:
+        first = int(self.t["first_customer_tick"])
+        interval = int(round(self.t["customer_interval_s"] * TICK))
+        return self.phase_tick >= first and (self.phase_tick - first) % interval == 0
+
+    def _spawn_customer(self, events) -> None:
+        occupied = {c["table_id"] for c in self.customers}
+        free_tables = [tb for tb in self.tables if tb["id"] not in occupied]
+        if not free_tables:
+            return  # không còn bàn: bỏ lượt
+        table = sort_by_id(free_tables)[0]
+        available = self._available()
+        dishes = [dish_id for dish_id, dish in sorted(self.menu.items())
+                  if all(available.get(kind, 0) >= qty for kind, qty in dish["recipe"].items())]
+        if not dishes:
+            events.append(("no_dish", {}))
+            return
+        dish_id = self.rng.get("customer_dish").choice(dishes)
+        customer_id = self.ids.new("C")
+        self.customers.append({
+            "id": customer_id, "table_id": table["id"], "dish_id": dish_id,
+            "order_tick": self.phase_tick, "state": "waiting",
+            "patience_ticks_left": int(round(self.t["patience_s"] * TICK)),
+            "eat_ticks_left": 0, "order_status": "reserved",
+            "reserved": dict(self.menu[dish_id]["recipe"]), "base_price": None, "tip": None,
+        })
+        events.append(("customer_arrived", {"order_id": customer_id, "table_id": table["id"],
+                                            "dish_id": dish_id}))
 
     def _interact(self, events) -> None:
         radius = float(self.t["interact_radius"])
