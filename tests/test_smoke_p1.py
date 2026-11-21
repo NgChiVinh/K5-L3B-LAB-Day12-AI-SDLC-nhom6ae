@@ -105,6 +105,19 @@ class ScenarioModes(unittest.TestCase):
                 self.assertEqual(run_headless("--mode", "quan", "--seed", "1", "--ticks", "0", "--scenario", sc,
                                               "--out", w.path("o.jsonl"))[0], 2, block)
 
+    def test_quan_fixture_reservation_conflicts_exit_2(self):
+        with Workdir() as w:
+            customer = {"id": "C1", "table_id": "T1", "dish_id": "goi_bong_sung"}
+            invalid = (
+                {"stock": {"bong_sung": 1}, "customers": [customer]},
+                {"stock": {"bong_sung": 2}, "customers": [{**customer, "reserved": {"ca_loc": 1}}]},
+                {"stock": {"ca_loc": 1}, "customers": [{**customer, "order_status": "assigned"}]},
+            )
+            for block in invalid:
+                sc = write_json(w.path("sc.json"), {"quan": block})
+                self.assertEqual(run_headless("--mode", "quan", "--seed", "1", "--ticks", "0", "--scenario", sc,
+                                              "--out", w.path("o.jsonl"))[0], 2, block)
+
     def test_quan_player_vel_hop_le(self):
         with Workdir() as w:
             sc = write_json(w.path("sc.json"), {"quan": {"player": {"pos": [8, 5], "vel": [0, 0]}}})

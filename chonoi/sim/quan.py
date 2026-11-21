@@ -8,6 +8,7 @@ Nhóm viết tiếp (PRD-0 mục F, Quán):
 """
 
 from ..ids import sort_by_id
+from ..errors import BadInput
 from .ramp import ramp_velocity
 
 TICK = 60.0
@@ -32,15 +33,35 @@ class QuanSim:
         self.stock = dict(inventory if inventory is not None else scenario.get("stock", {}))
         self.hand = scenario.get("hand")
         self.time_left_ticks = scenario.get("time_left_ticks", int(round(t["duration_s"] * 60)))
+        self.phase_tick = 0
+        self.random_customers = scenario.get("random_customers", True)
         self.reputation = scenario.get("reputation", t["reputation_initial"])
         self.stoves = [dict(s, state=s.get("state", "idle"), dish=s.get("dish"),
                             cook_ticks_left=s.get("cook_ticks_left", 0), ready_ticks=s.get("ready_ticks", 0))
                        for s in self._merge(t["stoves"], scenario.get("stoves", []))]
         self.tables = self._merge(t["tables"], scenario.get("tables", []))
-        # TODO(nhóm): khách dựng sẵn từ scenario (customers[]) và suy ra giữ chỗ (reserved).
-        self.customers = [dict(c, reserved=c.get("reserved", {})) for c in scenario.get("customers", [])]
+        patience = int(round(t["patience_s"] * TICK))
+        self.customers = []
+        for source in scenario.get("customers", []):
+            c = dict(source)
+            c.setdefault("order_tick", 0)
+            c.setdefault("state", "waiting")
+            c.setdefault("patience_ticks_left", patience)
+            c.setdefault("eat_ticks_left", 0)
+            c.setdefault("order_status", "reserved")
+            c.setdefault("reserved", dict(self.menu[c["dish_id"]]["recipe"])
+                         if c["order_status"] == "reserved" else {})
+            c.setdefault("base_price", None)
+            c.setdefault("tip", None)
+            self.customers.append(c)
         for e in self.customers:
             ids.reserve(e["id"])
+        reserved = {}
+        for c in self.customers:
+            for kind, quantity in c.get("reserved", {}).items():
+                reserved[kind] = reserved.get(kind, 0) + quantity
+        if any(quantity > self.stock.get(kind, 0) for kind, quantity in reserved.items()):
+            raise BadInput("khách giữ chỗ vượt tồn kho")
         self.money = 0
         self.earned = 0
         self.shift_earned = 0
@@ -71,17 +92,78 @@ class QuanSim:
 
     def step(self, inp):
         events = []
+        self.phase_tick += 1
         self.time_left_ticks = max(0, self.time_left_ticks - 1)
-        # TODO(nhóm): giảm kiên nhẫn / nấu / ăn; bếp chín -> ready; xử lý khách theo thứ tự PRD-0 mục F.
+        # F.1: chỉ khách đang chờ mất kiên nhẫn; khách đang ăn dùng timer của lát 4.
+        for c in self.customers:
+            if c["state"] == "waiting":
+                c["patience_ticks_left"] = max(0, c["patience_ticks_left"] - 1)
         self._move(inp)
-        # TODO(nhóm): tối đa MỘT interact, chọn đối tượng theo (khoảng cách, bếp trước bàn, id).
-        # TODO(nhóm): khách mới theo lịch (first_customer_tick, customer_interval_s), no_dish.
+        # Lát 4 đặt xử lý interact trước lời gọi này (F.3); deadline patience được xử lý ở F.4.
+        if self.time_left_ticks > 0:
+            for c in list(sort_by_id(self.customers)):
+                if c["state"] == "waiting" and c["patience_ticks_left"] == 0:
+                    self.reputation = self._clamp_reputation(
+                        self.reputation + self.t["left_reputation_delta"])
+                    events.append(("customer_left", {"order_id": c["id"], "table_id": c["table_id"],
+                                                       "reason": "patience", "reputation": self.reputation}))
+                    self._remove_customer(c)
+        # F.5: lịch tính bằng phase_tick sau tăng; khách sinh cuối bước chỉ tham gia từ bước sau.
+        if self.time_left_ticks > 0 and self._customer_due() and self.random_customers:
+            free_tables = [tb for tb in self.tables
+                           if not any(c["table_id"] == tb["id"] for c in self.customers)]
+            if free_tables:
+                table = sort_by_id(free_tables)[0]
+                available = self._available()
+                dishes = [dish_id for dish_id, dish in sorted(self.menu.items())
+                          if all(available.get(kind, 0) >= qty for kind, qty in dish["recipe"].items())]
+                if not dishes:
+                    events.append(("no_dish", {}))
+                else:
+                    dish_id = self.rng.get("customer_dish").choice(dishes)
+                    dish = self.menu[dish_id]
+                    customer_id = self.ids.new("C")
+                    c = {"id": customer_id, "table_id": table["id"], "dish_id": dish_id,
+                         "order_tick": self.phase_tick, "state": "waiting",
+                         "patience_ticks_left": int(round(self.t["patience_s"] * TICK)),
+                         "eat_ticks_left": 0, "order_status": "reserved",
+                         "reserved": dict(dish["recipe"]), "base_price": None, "tip": None}
+                    self.customers.append(c)
+                    events.append(("customer_arrived", {"order_id": customer_id, "table_id": table["id"],
+                                                          "dish_id": dish_id}))
         if self.time_left_ticks <= 0:
             self.done = True
             self.reason = "time"
             events.append(("quan_end", {"reason": "time", "money": self.money, "earned": self.earned,
                                         "shift_earned": self.shift_earned, "reputation": self.reputation}))
         return events
+
+    def _customer_due(self):
+        first = int(self.t["first_customer_tick"])
+        interval = int(round(self.t["customer_interval_s"] * TICK))
+        return self.phase_tick >= first and (self.phase_tick - first) % interval == 0
+
+    def _available(self):
+        """Kho còn có thể dùng cho đơn mới: tồn vật lý trừ mọi phần đang giữ."""
+        available = dict(self.stock)
+        for c in self.customers:
+            for kind, quantity in c.get("reserved", {}).items():
+                available[kind] = available.get(kind, 0) - quantity
+        return {kind: max(0, quantity) for kind, quantity in available.items()}
+
+    def _remove_customer(self, c):
+        """Nhả giữ chỗ và dọn món còn thuộc đơn; nguyên liệu đã tiêu thụ không được hoàn."""
+        for stove in self.stoves:
+            payload = stove.get("dish")
+            if payload and payload.get("order_id") == c["id"]:
+                stove.update(state="idle", dish=None, cook_ticks_left=0, ready_ticks=0)
+        if self.hand and self.hand.get("order_id") == c["id"]:
+            self.hand = None
+        if c in self.customers:
+            self.customers.remove(c)
+
+    def _clamp_reputation(self, value):
+        return min(self.t["reputation_max"], max(self.t["reputation_min"], value))
 
     def _move(self, inp):
         speed = self.t["walk_speed"]
