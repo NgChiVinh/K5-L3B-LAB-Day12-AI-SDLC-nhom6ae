@@ -35,7 +35,7 @@ Chạy lại sau PR #16 (gộp đóng gói + burn, leaderboard, cảnh báo + t�
 - Giới hạn: bench render bằng rasterizer phần mềm offscreen (client thật vẽ canvas trên trình duyệt); soak dùng bot tối giản (`earned` 0).
 
 ## Bổ sung sau tag `phase-4`
-- PR #17 (22520160, `61d68e3`): `docs/members/22520160.md` (185 từ) — AC-P4-09 còn **5/6** phản tư trên `main`.
-- `docs/members/truclamld.md` có trên nhánh `phase4/HUD` (`54df0b8`) nhưng **261 từ, vượt giới hạn ≤ 200** → chưa merge
-  vào `main`.
+- PR #17 (22520160, `61d68e3`): `docs/members/22520160.md` (185 từ) .
+- PR #18 (truclamld, `54df0b8`, `86c09a9`, `d2651d1`): `docs/members/truclamld.md` — bản đầu 261 từ, đã rút gọn còn
+  nội dung 200 từ (không tính dòng tiêu đề mẫu) → **AC-P4-09 đạt 6/6 phản tư** trên `main`.
 - Retro cuối Phase 4 đã có trong `docs/retro.md` (Integrator soạn, nhóm bổ sung).
