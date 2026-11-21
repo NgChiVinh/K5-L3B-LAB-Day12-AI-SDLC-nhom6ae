@@ -42,10 +42,16 @@ def main(argv=None) -> int:
     p.add_argument("--inventory")
     p.add_argument("--inventory-out", dest="inventory_out")
     p.add_argument("--snapshot-every", dest="snapshot_every", type=_int("snapshot-every"), default=10)
+    p.add_argument("--days", type=_int("days"))  # v1.1: chỉ với day, 1..5, mặc định 1
     a = p.parse_args(argv)
     try:
+        if a.days is not None and a.mode != "day":
+            raise BadInput("--days chỉ dùng với --mode day")
+        if a.mode == "day" and not (1 <= (a.days if a.days is not None else 1) <= 5):
+            raise BadInput("--days phải là số nguyên từ 1 đến 5")
         if a.mode == "day":
-            raise BadInput("--mode day chưa hỗ trợ ở contract v1.0 (có từ v1.1)")
+            # TODO(Phase 2 #4, NgChiVinh): chonoi/day.py — vòng ngày gather -> quan -> shop
+            raise BadInput("--mode day đang được làm (Phase 2 #4)")
         if a.ticks < 0:
             raise BadInput("--ticks phải >= 0")
         if a.snapshot_every <= 0:

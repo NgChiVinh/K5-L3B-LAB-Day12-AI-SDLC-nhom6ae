@@ -18,7 +18,7 @@ Mục lục: [1. File kho](#1-file-kho-gather--quan) · [2. Sự kiện](#2-danh
 | Quy tắc | Chi tiết |
 |---|---|
 | Khóa gốc | Chỉ đúng một khóa `items`. Khóa khác → mã 2. |
-| `kind` hợp lệ | `ca_loc`, `ca_linh`, `bong_dien_dien`, `bong_sung`. Kind lạ → mã 2. |
+| `kind` hợp lệ | `ca_loc`, `ca_linh`, `ca_keo`, `bong_dien_dien`, `bong_sung`, `keo_neo` (v1.1 thêm `ca_keo`, `keo_neo`). Kind lạ → mã 2. |
 | Giá trị | Số nguyên ≥ 0 (không bool, không số thực). Âm → mã 2. |
 | Bên ghi (gather) | Bỏ khóa có lượng 0; khóa sắp theo mã Unicode; JSON gọn `{"items":{...}}` + xuống dòng; ghi file tạm cùng thư mục rồi `os.replace` (nguyên tử). |
 | Khi nào ghi | Đúng **một lần** khi có `gather_end` (`docked` / `time` / `fainted`). Ngất → `{"items":{}}`. Chạm `--ticks` trước khi kết thúc → **không** tạo/ghi đè file. |

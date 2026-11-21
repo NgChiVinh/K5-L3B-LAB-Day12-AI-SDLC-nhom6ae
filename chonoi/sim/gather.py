@@ -57,18 +57,22 @@ class GatherSim:
         src_nodes = scenario["nodes"] if "nodes" in scenario else t["nodes"]
         self.nodes = [{"id": n["id"], "kind": n["kind"], "pos": [float(c) for c in n["pos"]],
                        "regrow_ticks": n.get("regrow_ticks", 0)} for n in src_nodes]
-        if "fish" in scenario:
-            src_fish = scenario["fish"]
-        elif scenario.get("random_fish", True):
-            src_fish = t["fish_initial"]
-        else:
-            src_fish = []
-        # Đàn cá đứng yên ở phase này. Cá bơi / sinh thêm là việc của phase sau.
+        # v1.1 (TICKET-02 mục 1.1, 4.3): random_fish (mặc định true) bật cá mặc định + bơi + sinh.
+        #   fish khai trong scenario THAY đàn ban đầu (vẫn bơi/sinh nếu cờ bật); random_fish=false -> cá fixture đứng yên.
+        self.random_fish = scenario.get("random_fish", True)
+        src_fish = scenario.get("fish", [])
         self.fish = [{"id": f["id"], "kind": f["kind"], "pos": [float(c) for c in f["pos"]],
-                      "heading_deg": f.get("heading_deg", 0)} for f in src_fish]
+                      "heading_deg": f.get("heading_deg", 0), "age_ticks": f.get("age_ticks", 0)} for f in src_fish]
         for coll in (self.nodes, self.fish):
             for e in coll:
                 ids.reserve(e["id"])
+        if self.random_fish and "fish" not in scenario:
+            # Đầu ca fish_initial đàn ở các điểm khác nhau (cách mọi đàn > fish_spawn_clearance)
+            for _ in range(int(t["fish_initial"])):
+                f = self._spawn_one()
+                if f is None:
+                    break
+                self.fish.append(f)
         self.money = 0
         self.earned = 0
         self.reputation = tuning["quan"]["reputation_initial"]
@@ -91,8 +95,8 @@ class GatherSim:
             "nodes": [{"id": n["id"], "pos": n["pos"], "kind": n["kind"],
                        "ready": n["regrow_ticks"] == 0, "regrow_ticks": n["regrow_ticks"]}
                       for n in sort_by_id(self.nodes)],
-            "fish": [{"id": f["id"], "pos": f["pos"], "kind": f["kind"], "heading_deg": f["heading_deg"]}
-                     for f in sort_by_id(self.fish)],
+            "fish": [{"id": f["id"], "pos": f["pos"], "kind": f["kind"], "heading_deg": f["heading_deg"],
+                      "age_ticks": f["age_ticks"]} for f in sort_by_id(self.fish)],
         }
 
     # --- một bước ---------------------------------------------------------------
@@ -162,6 +166,36 @@ class GatherSim:
 
     def _in_dock(self) -> bool:
         return math.dist(self.pos, self.t["dock_pos"]) <= self.t["dock_radius"]
+
+    def _spawn_one(self):
+        """Chọn một đàn mới theo seed (TICKET-02 mục 1.1). Trả dict cá hoặc None nếu hết điểm hợp lệ.
+
+        Điểm hợp lệ: (x, d) trong fish_spawn_x × fish_spawn_depths[loài], cách MỌI đàn đang sống > clearance.
+        Loài chọn theo fish_weights, chuẩn hóa lại trên các loài còn điểm; rồi chọn đều một điểm; hướng theo seed.
+        Dùng chung cho đầu ca (khung) và sinh theo lịch mỗi fish_spawn_ticks (lát 1).
+        """
+        t = self.t
+        rng = self.rng.get("fish_spawn")
+        clearance = float(t["fish_spawn_clearance"])
+        cands = {}
+        for kind in sorted(t["fish_spawn_depths"]):  # duyệt loài theo mã Unicode (thứ tự cố định)
+            pts = [(float(x), float(d)) for x in t["fish_spawn_x"] for d in t["fish_spawn_depths"][kind]
+                   if all(math.dist((x, d), f["pos"]) > clearance for f in self.fish)]
+            if pts and t["fish_weights"][kind] > 0:
+                cands[kind] = pts
+        if not cands:
+            return None
+        kinds = list(cands)
+        r = rng.random() * sum(t["fish_weights"][k] for k in kinds)
+        kind = kinds[-1]
+        for k in kinds:
+            r -= t["fish_weights"][k]
+            if r < 0:
+                kind = k
+                break
+        x, d = rng.choice(cands[kind])
+        heading = rng.uniform(0.0, 360.0)
+        return {"id": self.ids.new("F"), "kind": kind, "pos": [x, d], "heading_deg": heading, "age_ticks": 0}
 
     def _oxygen_step(self, was_surface, events) -> bool:
         """Lát 1 — mục F Gather bước 2. Trả True nếu ngất (bước dừng tại đây)."""
