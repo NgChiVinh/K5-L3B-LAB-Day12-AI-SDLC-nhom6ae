@@ -1,4 +1,4 @@
-"""Buổi sáng — Lặn & Hái (`gather`). KHUNG: bơi, chặn mép, đồng hồ, cập bến, xuất kho.
+"""Buổi sáng — Lặn & Hái (`gather`). Cá bơi/sinh theo TICKET-02; các luật khác theo lát Phase 1.
 
 Mặt cắt dòng sông nhìn NGANG: vị trí `[x, d]` (x sang phải, `d` độ sâu hướng xuống, d = 0 là mặt nước).
 `move = [x, d]`: thành phần thứ hai DƯƠNG = bơi xuống. Hướng mặt là góc từ +x, dương = xuống.
@@ -17,7 +17,8 @@ Nhóm viết tiếp (đúng thứ tự một bước trong PRD mục 13.8, "Gath
       - cập bến xét trước hái; runner ghi kho đúng một lần khi gather_end
       - hái nút ở mặt nước (gather, hold_full), nút mọc lại (node_regrown đã có phần đếm ngược)
       - bắt đàn cá bằng `catch` (fish_caught, hold_full, hồi chiêu catch_cd_ticks, chỉ khi dưới nước)
-Các tính năng của phase sau chưa nằm trong khung này.
+  XONG (Phase 2, lát 1 — tests/test_gather_fish.py): cá bơi, đổi hướng và sinh theo lịch.
+Cá Sấu và các tính năng Phase 2 khác được triển khai ở các lát riêng.
 """
 
 import math
@@ -28,6 +29,24 @@ from .ramp import ramp_velocity
 
 TICK = 60.0
 AXES = ("x", "d")
+
+
+def _reflect_axis(position, delta, low, high):
+    if low == high:
+        return low, 0.0
+    position += delta
+    while (position < low or position > high
+           or (position == low and delta < 0)
+           or (position == high and delta > 0)):
+        if position < low:
+            position = 2 * low - position
+            delta = abs(delta)
+        elif position > high:
+            position = 2 * high - position
+            delta = -abs(delta)
+        else:
+            delta = -delta
+    return position, delta
 
 
 class GatherSim:
@@ -52,6 +71,7 @@ class GatherSim:
         self.zero_oxy_ticks = p.get("zero_oxy_ticks", 0)
         self.invuln_ticks = p.get("invuln_ticks", 0)
         self.catch_cd_ticks = p.get("catch_cd_ticks", 0)
+        self.phase_tick = 0
         self.hold = list(scenario.get("hold", []))  # thứ tự nhặt, cuối mảng là mới nhất
         self.time_left_ticks = scenario.get("time_left_ticks", int(round(t["duration_s"] * TICK)))
         # nút và đàn cá: scenario THAY THẾ danh sách mặc định; random_fish=false tắt cá mặc định
@@ -103,6 +123,7 @@ class GatherSim:
     # --- một bước ---------------------------------------------------------------
     def step(self, inp):
         events = []
+        self.phase_tick += 1
         # 1. đồng hồ và hàng có sẵn: giảm bộ đếm, nút mọc lại
         self.time_left_ticks = max(0, self.time_left_ticks - 1)
         self.invuln_ticks = max(0, self.invuln_ticks - 1)
@@ -156,7 +177,10 @@ class GatherSim:
                         self.catch_cd_ticks = int(round(self.t["catch_cooldown_s"] * TICK))
                         events.append(("fish_caught", {"fish_id": fish["id"], "kind": fish["kind"],
                                                        "yield": amount}))
-        # 5. hết giờ
+        # 5. Cá bơi sau khi tương tác; cá mới sinh chỉ tham gia từ bước sau.
+        if self.random_fish and self.time_left_ticks > 0:
+            self._advance_fish(events)
+        # 6. hết giờ
         if self.time_left_ticks <= 0:
             self._finish("time", events)
         return events
@@ -197,6 +221,33 @@ class GatherSim:
         x, d = rng.choice(cands[kind])
         heading = rng.uniform(0.0, 360.0)
         return {"id": self.ids.new("F"), "kind": kind, "pos": [x, d], "heading_deg": heading, "age_ticks": 0}
+
+    def _advance_fish(self, events):
+        t = self.t
+        turn_rng = self.rng.get("fish_turn")
+        for fish in sort_by_id(self.fish):
+            fish["age_ticks"] += 1
+            if fish["age_ticks"] % int(t["fish_turn_ticks"]) == 0:
+                fish["heading_deg"] = turn_rng.uniform(0.0, 360.0)
+
+            angle = math.radians(fish["heading_deg"])
+            distance = float(t["fish_speed"]) / TICK
+            dx = distance * math.cos(angle)
+            dd = distance * math.sin(angle)
+            x_bounds = t["fish_x"]
+            d_bounds = t["fish_depths"][fish["kind"]]
+            x, dx = _reflect_axis(fish["pos"][0], dx, *x_bounds)
+            d, dd = _reflect_axis(fish["pos"][1], dd, *d_bounds)
+            fish["pos"] = [x, d]
+            if dx != 0.0 or dd != 0.0:
+                fish["heading_deg"] = math.degrees(math.atan2(dd, dx)) % 360
+
+        if self.phase_tick % int(t["fish_spawn_ticks"]) == 0 and len(self.fish) < int(t["fish_max"]):
+            fish = self._spawn_one()
+            if fish is not None:
+                self.fish.append(fish)
+                events.append(("fish_spawned", {"id": fish["id"], "kind": fish["kind"],
+                                                "pos": list(fish["pos"])}))
 
     def _oxygen_step(self, was_surface, events) -> bool:
         """Lát 1 — mục F Gather bước 2. Trả True nếu ngất (bước dừng tại đây)."""
