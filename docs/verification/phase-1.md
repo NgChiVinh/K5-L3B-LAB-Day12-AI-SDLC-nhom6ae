@@ -5,7 +5,7 @@
 | AC-P1-01 | Smoke hợp đồng kho và schema | `tests/test_smoke_p1.py::Integration`, `docs/proof/phase-1/qa-baseline.txt` | đạt |
 | AC-P1-02 | Event oxy rỗng, ngạt/choke dưới nước | `tests/test_qa_phase1.py::GatherContract`, `tests/test_gather_lat1.py` | đạt |
 | AC-P1-03 | Hái nút và hold_full | `tests/test_qa_phase1.py::GatherContract`, `tests/test_gather_lat2.py` | đạt |
-| AC-P1-04 | Smoke gather ghi kho, quan đọc kho tick 0; smoke hai tiến trình trên `main` (`python3 tools/smoke_proof.py --phase phase-1`, 7 mục kiểm) | `tests/test_smoke_p1.py::Integration.test_inv_01_gather_writes_inventory_quan_reads_it`, [`docs/proof/phase-1/smoke.md`](../proof/phase-1/smoke.md) (commit `4c38ece`, 7/7) | đạt |
+| AC-P1-04 | Smoke gather ghi kho, quan đọc kho tick 0; smoke hai tiến trình trên `main` (`python3 tools/smoke_proof.py --phase phase-1`, 7 mục kiểm) | `tests/test_smoke_p1.py::Integration.test_inv_01_gather_writes_inventory_quan_reads_it`, [`docs/proof/phase-1/smoke.md`](../proof/phase-1/smoke.md) (commit `454b2eb`, 7/7) | đạt |
 | AC-P1-05 | Khách đến theo lịch và giữ chỗ | `tests/test_qa_phase1.py::QuanContract.test_ac_p1_05_customer_arrives_and_reserves_inventory`, `tests/test_quan_lat3.py` | đạt |
 | AC-P1-06 | Nấu, bưng, phục vụ, trả tiền | `tests/test_qa_phase1.py::QuanContract.test_ac_p1_06_cook_pick_serve_and_paid`, `tests/test_quan_lat4.py` | đạt |
 | AC-P1-07 | HUD đọc snapshot | Cần xác minh bằng thử trình duyệt/UI | chưa kiểm |
