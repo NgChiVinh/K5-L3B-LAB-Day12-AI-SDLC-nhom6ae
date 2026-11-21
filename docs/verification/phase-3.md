@@ -24,3 +24,9 @@ toàn bộ chạy lại trên `main` theo hành động retro Phase 2.
 - Đạt: AC-P3-01 → 09 trên `main` `0d4676c`.
 - Chưa làm / ghi trung thực: **mở rộng** — mã Cháy món (`burn`) có trong `quan.py` và test của HoangQuan23112004 nhưng **chưa bật** trong manifest (`extensions: []`, `burn_s: null`), nên chưa tính là mục mở rộng; nhóm 6 người còn 0/2 mục cho cả lab. Tag `phase-3` gắn sau mốc 2:30.
 - Điều cần chỉnh cho Phase 4: bật và kiểm 2 mở rộng (`burn`, `snake`) với bằng chứng; mọi lát vào nhánh tích hợp qua PR (lần này nhánh `chuan` gộp `main` làm mất 5 dòng nhật ký của người khác — không merge, chỉ cherry-pick).
+
+## Bổ sung sau tag `phase-3`
+- PR #12 (22520160, `8107bbb`): `tests/test_quan_lat3.py` viết lại theo v1.2 bằng `items()` và thêm
+  `test_spoiled_reserved_item_is_released_and_rereserved_once_by_id` (cá thể giữ chỗ vừa ươn → `spoiled` → giữ lại
+  bằng cá thể tươi nhất, bước sau không đổi) — củng cố AC-P3-03. Trên `main` `65b5406`: **122/122 OK**. Không nằm
+  trong tag `phase-3` (merge sau mốc).
