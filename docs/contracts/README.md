@@ -1,4 +1,6 @@
-# Hợp đồng tích hợp — Phase 1 (contract v1.0)
+# Hợp đồng tích hợp — Contract v1.2 (Phase 3)
+
+> **v1.2 THAY THẾ v1.0/v1.1** ở các mục đánh dấu [THAY THẾ] trong TICKET-03 ([`docs/prd/phase-3.md`](../prd/phase-3.md)): kho đếm → **kho cá thể** `{id, kind, fresh}`, giữ chỗ theo lượng → **theo id**, giá niêm yết → **giá theo tươi**, `items`/`lost` trong event là **mảng cá thể**, thêm luật **ươn** + event `spoiled`. Quyết định: [ADR-0001](../adr/0001-kho-ca-the-do-tuoi.md); thay đổi cụ thể: [CHANGELOG](../../CHANGELOG.md). Phần còn lại của file này (v1.0/v1.1) vẫn đúng nếu không mâu thuẫn với các mục dưới.
 
 > Integrator giữ file này (NgChiVinh). Nguồn gốc: [`docs/prd/phase-1.md`](../prd/phase-1.md) mục D, E, F, G.
 > **Đổi hợp đồng:** báo cả nhóm trong kênh, cần người giữ lát bị ảnh hưởng đồng ý, ghi lý do vào commit (hoặc ADR nếu lớn).
@@ -12,7 +14,7 @@ Mục lục: [1. File kho](#1-file-kho-gather--quan) · [2. Sự kiện](#2-danh
 **Schema** (máy đọc: [`inventory.schema.json`](inventory.schema.json)):
 
 ```json
-{"items": {"<kind>": <số nguyên ≥ 0>, ...}}
+{"items": [{"id": "<chuỗi khác rỗng, duy nhất>", "kind": "<kind>", "fresh": <số trong [0, 100]>}, ...]}   // v1.2
 ```
 
 | Quy tắc | Chi tiết |
@@ -20,14 +22,14 @@ Mục lục: [1. File kho](#1-file-kho-gather--quan) · [2. Sự kiện](#2-danh
 | Khóa gốc | Chỉ đúng một khóa `items`. Khóa khác → mã 2. |
 | `kind` hợp lệ | `ca_loc`, `ca_linh`, `ca_keo`, `bong_dien_dien`, `bong_sung`, `keo_neo` (v1.1 thêm `ca_keo`, `keo_neo`). Kind lạ → mã 2. |
 | Giá trị | Số nguyên ≥ 0 (không bool, không số thực). Âm → mã 2. |
-| Bên ghi (gather) | Bỏ khóa có lượng 0; khóa sắp theo mã Unicode; JSON gọn `{"items":{...}}` + xuống dòng; ghi file tạm cùng thư mục rồi `os.replace` (nguyên tử). |
-| Khi nào ghi | Đúng **một lần** khi có `gather_end` (`docked` / `time` / `fainted`). Ngất → `{"items":{}}`. Chạm `--ticks` trước khi kết thúc → **không** tạo/ghi đè file. |
+| Bên ghi (gather) | v1.2: mảng cá thể sắp theo id, `fresh` float đầy đủ (không làm tròn); JSON gọn + xuống dòng; ghi file tạm cùng thư mục rồi `os.replace` (nguyên tử). Kho đếm v1.0/v1.1 → **mã 2**. |
+| Khi nào ghi | Đúng **một lần** khi có `gather_end` (`docked` / `time` / `fainted`). Ngất → `{"items":[]}`. Chạm `--ticks` trước khi kết thúc → **không** tạo/ghi đè file. |
 | Khớp event | Nội dung file == `gather_end.data.inventory`. |
 | Bên đọc (quan) | `--inventory <file>` → `stock`. Không có cả `--inventory` lẫn `scenario.quan.stock` → kho rỗng. Có cả hai → mã 2. Trần giỏ (12) **không** áp lên kho quán. |
 
-**Ví dụ hợp lệ:** [`inventory.sample.json`](inventory.sample.json) → `{"items":{"bong_sung":2,"ca_loc":1}}` · kho rỗng `{"items":{}}`.
+**Ví dụ hợp lệ (v1.2):** [`inventory.sample.json`](inventory.sample.json) → `{"items":[{"id":"I1","kind":"bong_sung","fresh":100},{"id":"I2","kind":"bong_sung","fresh":97.5},{"id":"I3","kind":"ca_loc","fresh":100}]}` · kho rỗng `{"items":[]}`.
 
-**Ví dụ sai (mã 2):** `{"items":{"ca_la_lung":1}}` · `{"items":{"ca_loc":-1}}` · `{"items":{},"x":1}` · `{"items":{"ca_loc":1.5}}`.
+**Ví dụ sai (mã 2, v1.2):** kho đếm `{"items":{"ca_loc":1}}` · kind lạ `{"items":[{"id":"I1","kind":"ca_la_lung","fresh":100}]}` · id trùng · `fresh` 101 / −1 / NaN · thiếu/thừa khóa.
 
 Code: `chonoi/inventory.py` (`read_inventory`, `write_inventory`, `hold_to_items`) — khung đã làm, **không sửa** khi chưa báo Integrator.
 
@@ -36,14 +38,14 @@ Code: `chonoi/inventory.py` (`read_inventory`, `write_inventory`, `hold_to_items
 ```bash
 python3 -m chonoi.headless --mode gather --seed 42 --scenario dock.json --inputs dock-inputs.json --ticks 1 --out gather.jsonl --inventory-out catch.json
 python3 -m chonoi.headless --mode quan --seed 42 --inventory catch.json --ticks 0 --out quan.jsonl
-# kỳ vọng: snapshot quán tick 0 có "stock":{"bong_sung":2,"ca_loc":1}
+# kỳ vọng (v1.2): snapshot quán tick 0 có "stock" đúng id, kind, fresh như file kho (sau 1 bước hao ở gather)
 ```
 
 ---
 
 ## 2. Danh sách sự kiện
 
-Dòng event: `{"type":"event","tick":k+1,"phase":"gather|quan","name":...,"data":{...}}`. Ghi theo **thứ tự xử lý** trong bước, rồi mới snapshot. `items` / `lost` là mảng kind.
+Dòng event: `{"type":"event","tick":k+1,"phase":"gather|quan","name":...,"data":{...}}`. Ghi theo **thứ tự xử lý** trong bước, rồi mới snapshot. **v1.2:** `cook_started.items` là mảng cá thể sắp kind rồi id; `lost` (`monster_hit`, `faint`) là mảng cá thể theo thứ tự bỏ LIFO. Event mới `spoiled {item_id, kind, location: hold|stock}`.
 
 ### Gather — `chonoi/sim/gather.py`
 
@@ -121,7 +123,7 @@ Hai lát cùng sửa `QuanSim` → chốt **cấu trúc dữ liệu** và **ai g
 ### 4.1. Cấu trúc (giống hệt snapshot mục D)
 
 ```python
-self.stock      # dict kind -> int: tồn VẬT LÝ, GỒM cả phần giữ chỗ
+self.stock      # v1.2: mảng cá thể {id, kind, fresh: Fraction}, tồn VẬT LÝ gồm cả phần giữ (hao 0.25/s)
 self.hand       # None hoặc payload {"order_id", "dish_id", "base_price"}
 self.stoves     # [{"id","pos","state": "idle|cooking|ready", "dish": payload|None, "cook_ticks_left", "ready_ticks"}]
 self.customers  # chỉ khách CÒN NGỒI, mỗi khách:
@@ -134,7 +136,7 @@ self.customers  # chỉ khách CÒN NGỒI, mỗi khách:
   "patience_ticks_left": 3600,
   "eat_ticks_left": 0,
   "order_status": "reserved", # reserved | assigned | unfulfillable | served
-  "reserved": {"bong_sung": 2},  # rỗng {} khi assigned/served/unfulfillable
+  "reserved": ["I3", "I7"],     # v1.2: mảng id cá thể (tươi nhất, hòa id); rỗng [] khi assigned/served/unfulfillable
   "base_price": None,         # chốt khi cook_started (int)
   "tip": None,                # chốt khi served (int)
 }
@@ -148,7 +150,7 @@ Id khách mới cấp bằng `self.ids` (`IdAllocator`, họ `C`); sắp bằng 
 |---|---|---|
 | Khách đến | Lát 3 | thêm khách: `waiting`, `reserved`, `reserved = recipe`, kiên nhẫn đầy, `order_tick = phase_tick` |
 | Kiên nhẫn −1 mỗi bước | Lát 3 | `patience_ticks_left` (chỉ khách `waiting`, kẹp 0) |
-| Bắt đầu nấu | Lát 4 | `stock -= reserved`; `reserved = {}`; `order_status = "assigned"`; `base_price = menu.price`; bếp `cooking` + `dish = payload` |
+| Bắt đầu nấu | Lát 4 | v1.2: tiêu đúng các id trong `reserved`; `reserved = []`; `order_status = "assigned"`; `base_price = floor(menu.price × fresh TB / 100)`; bếp `cooking` + `dish = payload` |
 | Nấu xong / bưng | Lát 4 | bếp `ready` → `hand = payload`, bếp `idle` |
 | Phục vụ | Lát 4 | `state = "eating"`, `order_status = "served"`, `eat_ticks_left = eat_s × 60`, `tip`; `hand = None` |
 | Ăn xong / hết ca | Lát 4 | `paid` → `money += amount`, `earned`, `shift_earned`, uy tín (+tip_reputation nếu tip > 0, kẹp) → gọi `_remove_customer` |
@@ -157,7 +159,7 @@ Id khách mới cấp bằng `self.ids` (`IdAllocator`, họ `C`); sắp bằng 
 ### 4.3. Hàm dùng chung (Lát 3 viết, Lát 4 gọi)
 
 ```python
-def _available(self) -> dict:            # stock − tổng reserved của mọi khách; dùng cho chọn món
+def _available(self) -> dict:            # v1.2: số cá thể theo loại chưa giữ VÀ chưa ươn (fresh >= 30)
 def _remove_customer(self, c) -> None:   # nhả c["reserved"] (không trừ stock), bỏ món của đơn c
                                          # trên bếp (bếp về idle) hoặc trên tay (hand = None), xóa khách
 ```

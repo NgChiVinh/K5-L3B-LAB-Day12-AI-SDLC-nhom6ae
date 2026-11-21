@@ -9,7 +9,8 @@ import json
 import math
 
 from .errors import BadInput
-from .inventory import KINDS_P1, validate_items
+from .inventory import KINDS
+from .items import parse_items
 
 GATHER_KEYS = {"player", "hold", "nodes", "fish", "monsters", "random_fish", "time_left_ticks"}
 GATHER_PLAYER_KEYS = {"pos", "vel", "heading_deg", "hp", "oxygen_ticks", "zero_oxy_ticks",
@@ -163,8 +164,7 @@ def _validate_gather(b, tuning):
         raise BadInput("random_fish phải là boolean")
     if "hold" in b:
         h = b["hold"]
-        if not isinstance(h, list) or any(k not in KINDS_P1 for k in h):
-            raise BadInput("hold phải là mảng id nguyên liệu hợp lệ")
+        parse_items(h, KINDS, "gather.hold")  # v1.2: mảng cá thể {id, kind, fresh} theo thứ tự vào giỏ
         if len(h) > g["hold_capacity"]:
             raise BadInput("hold vượt sức chứa")
     p = b.get("player", {})
@@ -254,8 +254,9 @@ def _validate_quan(b, tuning):
     for arr in ("stoves", "tables", "customers"):
         if arr in b:
             _check_ids(arr, b[arr])
+    below = tuning["freshness"]["spoiled_below"]
     if "stock" in b:
-        stock = validate_items(b["stock"])
+        stock = {it["id"]: it for it in parse_items(b["stock"], KINDS, "quan.stock")}  # v1.2: mảng cá thể
     else:
         stock = None
     if "random_customers" in b and not isinstance(b["random_customers"], bool):
@@ -323,16 +324,27 @@ def _validate_quan(b, tuning):
         status = c.get("order_status", "reserved")
         if state not in ("waiting", "eating") or status not in ("reserved", "assigned", "unfulfillable", "served"):
             raise BadInput(f"customers.{c['id']}: state/order_status không hợp lệ")
-        reserved = c.get("reserved", menu[dish_id]["recipe"] if status == "reserved" else {})
-        if not isinstance(reserved, dict):
-            raise BadInput(f"customers.{c['id']}.reserved phải là object")
-        checked_reserved = validate_items(reserved)
-        if status == "reserved" and checked_reserved != menu[dish_id]["recipe"]:
-            raise BadInput(f"customers.{c['id']}: reserved phải đúng công thức")
-        if status != "reserved" and checked_reserved:
-            raise BadInput(f"customers.{c['id']}: đơn không reserved phải có reserved rỗng")
-        for kind, qty in checked_reserved.items():
-            reserved_totals[kind] = reserved_totals.get(kind, 0) + qty
+        # v1.2: reserved là mảng id cá thể (vắng ở đơn reserved -> quan.py cấp theo order_tick rồi id bàn)
+        reserved = c.get("reserved")
+        if reserved is not None:
+            if not isinstance(reserved, list) or not all(isinstance(x, str) and x for x in reserved)                     or len(set(reserved)) != len(reserved):
+                raise BadInput(f"customers.{c['id']}.reserved phải là mảng id cá thể không trùng")
+            if status != "reserved" and reserved:
+                raise BadInput(f"customers.{c['id']}: đơn không reserved phải có reserved rỗng")
+            if status == "reserved":
+                if stock is None or any(x not in stock for x in reserved):
+                    raise BadInput(f"customers.{c['id']}: reserved trỏ tới cá thể không có trong kho")
+                if any(stock[x]["fresh"] < below for x in reserved):
+                    raise BadInput(f"customers.{c['id']}: reserved trỏ tới cá thể đã ươn")
+                kinds = {}
+                for x in reserved:
+                    kinds[stock[x]["kind"]] = kinds.get(stock[x]["kind"], 0) + 1
+                if kinds != menu[dish_id]["recipe"]:
+                    raise BadInput(f"customers.{c['id']}: reserved phải đúng công thức")
+                for x in reserved:
+                    if x in reserved_totals:
+                        raise BadInput(f"customers.{c['id']}: cá thể {x} đã giữ cho đơn khác")
+                    reserved_totals[x] = c["id"]
         if status == "unfulfillable" and state != "waiting":
             raise BadInput(f"customers.{c['id']}: unfulfillable phải đang waiting")
         if status == "served":
@@ -347,8 +359,6 @@ def _validate_quan(b, tuning):
                 raise BadInput(f"customers.{c['id']}: eating cần eat_ticks_left dương")
         elif state != "waiting":
             raise BadInput(f"customers.{c['id']}: eating cần order_status served")
-    if stock is not None and any(qty > stock.get(kind, 0) for kind, qty in reserved_totals.items()):
-        raise BadInput("khách giữ chỗ vượt tồn kho")
     if len(table_ids) != len(set(table_ids)):
         raise BadInput("hai khách cùng bàn")
     orders = [p["order_id"] for p in payloads]
