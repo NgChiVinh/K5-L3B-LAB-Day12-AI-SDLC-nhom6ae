@@ -101,6 +101,7 @@ class LiveGame:
         with self._lock:
             snap = self.session.snapshot()
             snap["meta"] = self.tuning.get(snap["phase"], {})  # theo pha đang chạy (day: gather/quan/shop)
+            snap["menu"] = self.tuning["menu"]  # công thức/thời gian nấu cho HUD (chỉ hiển thị)
             snap["events"] = list(self.events)
             snap["finished"] = self.session.done
             snap["reason"] = self.session.reason if self.session.done else None
