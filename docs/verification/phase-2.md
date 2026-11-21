@@ -1,22 +1,30 @@
 # Ma trận kiểm chứng Phase 2
 
-Trạng thái trên branch `qa/khoa-phase1-verification`, base `ac0bdd8`.
+Trạng thái trên branch `qa/khoa-phase1-verification`, sau khi tích hợp `origin/main` tại `d8c0425`.
 
 | AC | Kiểm chứng / bằng chứng | Trạng thái | Chặn bởi |
 |---|---|---|---|
-| AC-P2-01 | Contract v1.1 và số chuẩn; baseline/full suite | đạt khung | — |
-| AC-P2-02 | 8 đàn, N5/N6, cá kèo yield 2 có test; cá bơi và sinh theo lịch chưa có | đang chờ phần hành vi | Hiếu #1 |
-| AC-P2-03 | Chưa có `monsters.py`/test Cá Sấu | chưa làm | Chuẩn #2 |
-| AC-P2-04 | Snapshot có B1/B2, T1–T4; menu có 6 món. Hành vi đa bếp/bàn và lọc món theo day chưa kiểm | một phần | Quân #3 |
-| AC-P2-05 | Chưa có `shop.py`/test mua và đóng Shop | chưa làm | Quân #3 |
-| AC-P2-06 | Chưa có runner vòng ngày và test `day --days` | chưa làm | Vĩnh #4; cần Shop của Quân #3 |
-| AC-P2-07 | Chưa có kiểm pause xuyên các pha | chưa làm | Vĩnh #4 |
-| AC-P2-08 | Chưa kiểm chơi trọn vòng ngày/HUD v1.1 | chưa làm | Vĩnh #4 và Lâm #5 |
-| AC-P2-09 | Regression hiện có 74/74 pass; smoke kho tick 0 đạt. Smoke ngày và regression hành vi các lát mới còn chờ | một phần | #1–#4; smoke ngày cần #3 và #4 |
+| AC-P2-01 | Contract v1.1, dữ liệu chuẩn, 8 đàn, N5/N6, 6 món; regression hộp đen | đạt | — |
+| AC-P2-02 | Số đàn/nút và yield cá kèo có test; chưa có cá bơi, tăng tuổi và sinh cá theo lịch | một phần | Hiếu #1 |
+| AC-P2-03 | Chưa có `monsters.py` hoặc kiểm chứng Cá Sấu | chưa làm | Chuẩn #2 |
+| AC-P2-04 | Cấu hình 2 bếp/4 bàn/6 món có test; chưa có kiểm chứng hành vi đồng thời đa bếp/bàn và lọc menu trong ngày | một phần | Quân #3 |
+| AC-P2-05 | Mua nâng cấp, sai giá/thiếu tiền/cấp tối đa, `shop_done` và tự đóng Shop có test | đạt | — (Shop do Vĩnh #4 tích hợp) |
+| AC-P2-06 | Thứ tự pha, kế hoạch D1–D5, kết thúc ngày và giới hạn tick có test; smoke 1 ngày và 5 ngày đạt | đạt | — |
+| AC-P2-07 | Pause/resume và timer dừng có test trong gather, quán và Shop của day mode | đạt | — |
+| AC-P2-08 | `live.py` hỗ trợ day, nhưng chưa kiểm chứng các màn hình, HUD v1.1 và menu pause trên UI | chưa làm | Lâm #5 |
+| AC-P2-09 | Regression 84/84; smoke bàn giao kho và smoke ngày đạt. Chưa phải smoke gameplay đầy đủ hoặc kết quả gắn tag cuối | một phần | #1, #2, #3, #5 và tag tích hợp |
 
 ## Kết quả đã chạy
 
 - Windows PowerShell: `$env:PYTHONPATH="tests;."`
-- `python3 -m unittest discover -s tests -v`: **74/74 OK**.
-- Smoke gather → quan: [`integration.md`](../proof/phase-2/integration.md).
-- Smoke này dùng giỏ fixture tại bến, nên **không** chứng minh cá mới đã bơi/sinh hay được bắt trong gameplay.
+- `python3 -m unittest discover -s tests -v`: **84/84 OK** sau khi tích hợp `origin/main`.
+- Smoke gather → quan: [`integration.md`](../proof/phase-2/integration.md). Dùng giỏ fixture tại bến nên chỉ xác nhận luồng bàn giao kho.
+- Smoke vòng ngày: [`day-smoke.md`](../proof/phase-2/day-smoke.md). Xác nhận chuyển pha/kế hoạch/kết thúc D1 và D1–D5; không có input gameplay.
+
+## Việc còn chặn
+
+- Hiếu #1: cá mới chỉ được khởi tạo đầu ca; bước cá bơi, tăng tuổi và sinh định kỳ chưa có trong `GatherSim.step`.
+- Chuẩn #2: chưa có module/thực thể Cá Sấu và test tương ứng.
+- Quân #3: cần kiểm tra hành vi 2 bếp/4 bàn và lọc menu theo kế hoạch ngày. Shop đã có implementation và test từ #4, không còn chặn vòng ngày.
+- Lâm #5: còn thiếu kiểm chứng UI cho các màn hình ngày, HUD v1.1 và menu pause.
+- Khoa #6: regression và smoke chuyển pha đã chạy; cần chạy lại regression/smoke gameplay sau khi #1–#3 hoàn tất.

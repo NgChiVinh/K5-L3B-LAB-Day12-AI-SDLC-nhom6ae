@@ -23,10 +23,12 @@ class QuanSim:
     mode = "quan"
     phase = "quan"
 
-    def __init__(self, tuning, scenario, streams, ids, inventory=None):
+    def __init__(self, tuning, scenario, streams, ids, inventory=None, menu_filter=None):
         t = tuning["quan"]
         self.t = t
         self.menu = tuning["menu"]
+        # --mode day: chỉ món trong kế hoạch Ngày (lọc TRƯỚC khi lọc nguyên liệu); quán riêng dùng cả 6 món
+        self.menu_filter = set(menu_filter) if menu_filter is not None else None
         self.rng = streams
         self.ids = ids
         p = scenario.get("player", {})
@@ -244,6 +246,7 @@ class QuanSim:
         table = sort_by_id(free_tables)[0]
         available = self._available()
         dishes = [dish_id for dish_id, dish in sorted(self.menu.items())
+                  if self.menu_filter is None or dish_id in self.menu_filter
                   if all(available.get(kind, 0) >= qty for kind, qty in dish["recipe"].items())]
         if not dishes:
             events.append(("no_dish", {}))
