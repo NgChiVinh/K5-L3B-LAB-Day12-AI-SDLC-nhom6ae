@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quán Ăn Chợ Nổi — chơi thử</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #10161c; color: #e8eef2; font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
+  html, body { margin: 0; height: 100%; background: #10161c; color: #e8eef2; font: 18px/1.4 system-ui, sans-serif; overflow: hidden; }
   canvas { display: block; width: 100vw; height: 100vh; }
 </style>
 </head>
@@ -27,12 +27,13 @@ const down = new Set();
 const MOVE_KEYS = { w: "u", arrowup: "u", s: "d", arrowdown: "d", a: "l", arrowleft: "l", d: "r", arrowright: "r" };
 let queue = [], inflight = false, lastSent = "";
 
+let pendingAction = {};
 function currentInput() {
   const mode = snap ? snap.mode : "gather";
   const dx = (down.has("r") ? 1 : 0) - (down.has("l") ? 1 : 0);
   let dy = (down.has("d") ? 1 : 0) - (down.has("u") ? 1 : 0);   // gather: xuống = d dương
   if (mode === "quan") dy = -dy;                                // quan: lên (bắc) = z dương
-  return { move: [dx, dy], interact: down.has("interact"), catch: down.has("catch") };
+  return Object.assign({ move: [dx, dy], interact: down.has("interact"), catch: down.has("catch"), pause: down.has("pause") }, pendingAction);
 }
 function pushInput() {
   const s = JSON.stringify(currentInput());
@@ -49,6 +50,7 @@ async function flush() {
     try { await fetch("/input", { method: "POST", body, headers: { "Content-Type": "application/json" } }); }
     catch (e) { /* mất kết nối: poll sẽ báo */ }
   }
+  pendingAction = {};
   inflight = false;
 }
 function keyName(e) { return e.key.length === 1 ? e.key.toLowerCase() : e.key.toLowerCase(); }
@@ -58,6 +60,11 @@ addEventListener("keydown", (e) => {
   if (MOVE_KEYS[k]) { down.add(MOVE_KEYS[k]); e.preventDefault(); }
   else if (k === "e") down.add("interact");
   else if (k === " ") { down.add("catch"); e.preventDefault(); }
+  else if (k === "escape" || k === "p") down.add("pause");
+  else if (k === "1" || k === "2") { pendingAction.buy = k === "1" ? "oxygen" : "hp"; }
+  else if (k === "enter") { pendingAction.shop_done = true; }
+  else if (k === "q") { pendingAction.action = "continue"; }
+  else if (k === "m") { pendingAction.action = "menu"; }
   else if (k === "r") { fetch("/restart", { method: "POST" }); lastSent = ""; down.clear(); }
   pushInput();
 });
@@ -66,6 +73,7 @@ addEventListener("keyup", (e) => {
   if (MOVE_KEYS[k]) down.delete(MOVE_KEYS[k]);
   else if (k === "e") down.delete("interact");
   else if (k === " ") down.delete("catch");
+  else if (k === "escape" || k === "p") down.delete("pause");
   pushInput();
 });
 addEventListener("blur", () => { down.clear(); pushInput(); });
@@ -138,6 +146,55 @@ function fmtTime(ticks) {
   const s = Math.ceil(ticks / 60);
   return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
 }
+function planIngredients() {
+  const plan = snap.day_plan || {};
+  return plan.ingredients || (Array.isArray(plan) ? plan[snap.day - 1]?.ingredients : null) || {};
+}
+function statusCard(w, h, title, subtitle, details, accent = "#f0cf88") {
+  ctx.fillStyle = "rgba(5,12,18,.74)"; ctx.fillRect(0, 0, w, h);
+  const pw = Math.min(680, w - 36), ph = Math.min(430, h - 36), x = (w - pw) / 2, y = (h - ph) / 2;
+  panel(x, y, pw, ph, "rgba(18,32,40,.98)");
+  text(title, w / 2, y + 62, { size: 30, align: "center", color: accent });
+  fitText(subtitle || "", x + 28, y + 105, pw - 56, { size: 20, align: "center" });
+  (details || []).slice(0, 9).forEach((line, i) => fitText(line, x + 36, y + 151 + i * 29, pw - 72, { size: 18, color: i % 2 ? "#cbd8d8" : "#f1e7d2" }));
+}
+function promptBox(w, h, message, color = "#fff0ae") {
+  const width = Math.min(560, w - 32), height = 52;
+  const x = (w - width) / 2, y = h - height - 22;
+  panel(x, y, width, height, "rgba(10,24,32,.94)");
+  ctx.strokeStyle = "rgba(255,232,170,.62)"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.roundRect(x, y, width, height, 12); ctx.stroke();
+  fitText(message, x + width / 2, y + 33, width - 32, { size: 20, align: "center", color });
+}
+function drawPhaseScreen(w, h) {
+  const phase = snap.phase;
+  const ev = snap.events || [];
+  const last = (name) => [...ev].reverse().find((e) => e.name === name)?.data || {};
+  if (["day_intro", "DayIntro", "dayintro"].includes(phase)) {
+    const p = snap.day_plan || {}, ingredients = p.ingredients || {};
+    statusCard(w, h, `NGÀY ${snap.day || 1} · MÁ TƯ DẶN`, "Hôm nay mình sẽ nấu:", Object.keys(p.dishes || {}).map((id) => `${dn(id)} ×${p.dishes[id]}`).concat(["Nguyên liệu cần gom:"]).concat(Object.keys(ingredients).map((k) => `${KIND_NAME[k] || k}  ${ingredients[k]}`), ["Nhấn phím bất kỳ để bắt đầu · tự chuyển sau 4 giây"]));
+    return true;
+  }
+  if (["evening_intro", "EveningIntro", "eveningintro"].includes(phase)) {
+    const stock = snap.stock || {};
+    statusCard(w, h, "HÀNG ĐÃ VỀ BẾN", "Kho bàn giao cho quán", Object.keys(stock).map((k) => `${KIND_NAME[k] || k} ×${stock[k]}`).concat(["Món có thể nấu sẽ hiện tại các bàn và bếp."])); return true;
+  }
+  if (["day_result", "DayResult", "dayresult"].includes(phase)) {
+    const d = last("day_result");
+    statusCard(w, h, `KẾT QUẢ NGÀY ${snap.day || ""}`, "Ca quán đã khép lại", [`Khách phục vụ: ${d.served ?? snap.served ?? "—"}`, `Khách bỏ đi: ${d.left ?? snap.left ?? "—"}`, `Tiền ca: ${d.shift_earned ?? snap.shift_earned ?? "—"}k`, `Boa: ${d.tips ?? snap.tips ?? "—"}k`, `Uy tín: ${d.reputation_delta ?? "—"}`, "Đang chuyển tới Shop…"]); return true;
+  }
+  if (["summary", "Summary", "summary_screen"].includes(phase)) {
+    statusCard(w, h, "HẾT MỘT VÒNG NGÀY", "Quán mình hôm nay", [`Tổng tiền: ${snap.money ?? "—"}k`, `Tổng điểm: ${snap.score ?? "—"}`, `Uy tín: ${Number(snap.reputation ?? 0).toFixed(1)}/5`, `Món bán chạy: ${snap.best_seller ? dn(snap.best_seller) : "—"}`, "Cảm ơn bạn đã ghé quán!"]); return true;
+  }
+  if (["shop", "Shop"].includes(phase)) {
+    const ups = snap.upgrades || {}, active = snap.active_upgrades || {}, entries = [];
+    entries.push(`Tiền: ${snap.money ?? 0}k`);
+    [["oxygen", "Bình oxy"], ["hp", "Áo phao"]].forEach(([id, label]) => entries.push(`${label}: cấp ${ups[id] || 0} (đang áp dụng ${active[id] || 0}) · nhấn ${id === "oxygen" ? "1" : "2"} để mua cấp tiếp`));
+    entries.push("Nhấn Enter để đóng Shop và sang Ngày tiếp theo.");
+    statusCard(w, h, "SHOP CUỐI NGÀY", `Ngày ${snap.day || 1} · nâng cấp áp dụng từ ngày mai`, entries, "#a9d6a2"); return true;
+  }
+  return false;
+}
 function brief(d) {
   try { const s = JSON.stringify(d); return s.length > 60 ? s.slice(0, 57) + "…" : s; } catch (e) { return ""; }
 }
@@ -159,7 +216,9 @@ function drawGatherHud(w) {
   const p = snap.player || {};
   panel(12, 10, Math.max(280, w - 24), 70);
   text("BUỔI SÁNG · LẶN & HÁI", 26, 31, { size: 12, color: "#9bd5dc" });
-  text("Còn " + fmtTime(snap.time_left_ticks), 26, 60, { size: 21 });
+  const secondsLeft = (snap.time_left_ticks || 0) / 60;
+  const timerColor = secondsLeft <= 30 ? (Math.floor((snap.tick || 0) / 15) % 2 ? "#ff5252" : "#ffcdd2") : "#e8eef2";
+  text("Còn " + fmtTime(snap.time_left_ticks), 26, 60, { size: 21, color: timerColor });
   const oxyMax = p.oxygen_max_ticks || 1;
   bar(155, 43, Math.max(100, Math.min(220, w * .23)), 20,
       (p.oxygen_ticks || 0) / oxyMax,
@@ -179,6 +238,12 @@ function drawGatherHud(w) {
   const gx = 470, gw = w - 24 - gx;
   fitText("GIỎ " + (snap.hold_count ?? (snap.hold || []).length) + "/" + (snap.hold_capacity || "—"), gx, 31, gw, { size: 11, color: "#b8c8cc" });
   fitText(inventory, gx, 54, gw, { size: 13, color: "#f1dfae" });
+  const needed = planIngredients(), got = {};
+  (snap.hold || []).forEach((k) => got[k] = (got[k] || 0) + 1);
+  const neededText = Object.keys(needed).map((k) => `${KIND_NAME[k] || k} ${got[k] || 0}/${needed[k]}`).join(" · ");
+  if (neededText) fitText("CẦN LẤY  " + neededText, 26, 78, w - 48, { size: 18, color: "#ffe6a8" });
+  if (p.pos) text(`Độ sâu ${Number(p.pos[1]).toFixed(1)} m`, w - 28, 59, { size: 18, align: "right", color: "#d7ecf2" });
+  if (snap.catch_cd_ticks > 0 || snap.catch_cooldown_ticks > 0) text(`Bắt cá hồi: ${Math.ceil((snap.catch_cd_ticks || snap.catch_cooldown_ticks) / 60)}s`, w - 28, 82, { size: 18, align: "right", color: "#d7ecf2" });
 }
 
 function drawQuanHud(w) {
@@ -266,6 +331,10 @@ function drawGather(w, h) {
     ctx.restore();
     text(f.id, sx(f.pos[0]), sy(f.pos[1]) - 0.7 * s, { size: 10, align: "center", color: "rgba(255,255,255,.8)" });
   });
+  (snap.monsters || []).forEach((m) => {
+    const mp = m.pos || [0, 0]; ctx.fillStyle = "#bd71dc"; ctx.beginPath(); ctx.arc(sx(mp[0]), sy(mp[1]), Math.max(8, .75 * s), 0, Math.PI * 2); ctx.fill();
+    text("🐊", sx(mp[0]), sy(mp[1]) + 6, { size: Math.max(16, .8 * s), align: "center" });
+  });
   // người chơi
   const p = snap.player;
   if (p) {
@@ -279,6 +348,14 @@ function drawGather(w, h) {
       ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + Math.cos(a) * 0.9 * s, py + Math.sin(a) * 0.9 * s); ctx.stroke();
     }
   }
+  const playerPos = (p && p.pos) || [0, 0];
+  const nearMonster = (snap.monsters || []).some((m) => m.pos && Math.hypot(m.pos[0] - playerPos[0], m.pos[1] - playerPos[1]) <= (meta.monster_warning_radius || 8));
+  const nearNode = (snap.nodes || []).some((n) => n.ready !== false && Math.hypot(n.pos[0] - playerPos[0], n.pos[1] - playerPos[1]) <= 2);
+  const dockPos = meta.dock_pos || [2, 0], nearDock = Math.hypot(dockPos[0] - playerPos[0], dockPos[1] - playerPos[1]) <= (meta.dock_radius || 3);
+  if (nearMonster) { promptBox(w, h, "THỦY QUÁI!", "#efb4ff"); ctx.strokeStyle = "#bd71dc"; ctx.lineWidth = 5; ctx.strokeRect(3, 3, w - 6, h - 6); }
+  else if (p.oxygen_ticks === 0) promptBox(w, h, "HẾT HƠI!", "#ffaaaa");
+  else if (nearNode) promptBox(w, h, "E  ·  HÁI NGUYÊN LIỆU");
+  else if (nearDock) promptBox(w, h, "E  ·  CẬP BẾN");
   // HUD và giỏ
   drawGatherHud(w);
   if (snap.hold && snap.hold_capacity) {
@@ -348,9 +425,14 @@ function frame() {
   const [w, h] = fit();
   ctx.fillStyle = "#10161c"; ctx.fillRect(0, 0, w, h);
   if (snap) {
-    if (snap.mode === "quan") drawQuan(w, h); else drawGather(w, h);
+    if (snap.phase === "gather" || snap.phase === "quan" || !snap.phase) {
+      if (snap.phase === "quan" || snap.mode === "quan") drawQuan(w, h); else drawGather(w, h);
+    } else if (!drawPhaseScreen(w, h)) {
+      statusCard(w, h, "CHỢ NỔI NHÀ MÁ TƯ", "Một ngày mới đang chờ", ["Chơi", "Nhấn phím bất kỳ để tiếp tục"]);
+    }
     eventLog(w, h);
     overlay(w, h);
+    if (snap.state === "paused" || snap.paused) statusCard(w, h, "TẠM DỪNG", "Thời gian và mọi hoạt động đang dừng", ["Q · Tiếp tục", "M · Về menu", "P / Esc · Tiếp tục"], "#c5d8f5");
   } else {
     text(offline ? "Không kết nối được máy chủ…" : "Đang tải…", w / 2, h / 2, { align: "center", size: 18 });
   }
