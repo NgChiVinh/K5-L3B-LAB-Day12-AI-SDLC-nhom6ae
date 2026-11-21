@@ -7,6 +7,10 @@
 - Headless: `python3 -m chonoi.headless --mode gather|quan --seed 1 --ticks 600 --out out.jsonl`
 - Chơi thử trên trình duyệt: `python3 -m chonoi.live --mode gather|quan` (mở địa chỉ in ra; WASD, E, Space, R)
 
+## Đề bài (đọc trước khi code)
+- Phase 1: [`docs/prd/phase-1.md`](docs/prd/phase-1.md) — PRD-0 + Test Contract v1.0 (luật từng bước ở mục F, sự kiện ở mục E, scenario ở mục D).
+- Kế hoạch / chia lát: [`docs/plan/phase-1.md`](docs/plan/phase-1.md), người làm ở [`TEAM.md`](TEAM.md).
+
 ## Cấu trúc & quy ước
 - (Starter Python là TÙY CHỌN; nhóm có thể dùng ngôn ngữ khác nếu giữ Test Contract.) Khung do giảng viên cấp: `chonoi/{headless,inputs,scenario,contract,rng,ids,jsonl,inventory,runner,live}.py` và `chonoi/web/`. Hạn chế sửa; nếu phải sửa thì báo cả nhóm và ghi lại lý do.
 - Luật chơi của nhóm: `chonoi/sim/gather.py`, `chonoi/sim/quan.py` (tìm `TODO(nhóm)`).
