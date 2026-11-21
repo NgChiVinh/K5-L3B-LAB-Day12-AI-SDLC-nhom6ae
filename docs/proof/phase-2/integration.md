@@ -1,6 +1,6 @@
 # Smoke bàn giao kho Phase 2
 
-- Commit luật được kiểm: `ac0bdd8` (khung contract v1.1 trên `main`).
+- Fixture/luật v1.1 từ `ac0bdd8`; smoke được chạy lại trên `fe3930f` sau khi tích hợp Phase 2.
 - Luồng kiểm: `gather --inventory-out` → `quan --inventory`, `--seed 42`.
 - Fixture đặt sẵn trong giỏ tại bến, tắt cá ngẫu nhiên; smoke này kiểm giao thức xuất/đọc kho, không kiểm bắt cá, cá bơi/sinh hoặc quái.
 
