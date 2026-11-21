@@ -8,7 +8,8 @@
   "bench_cmd": "python3 -m chonoi.bench",
   "soak_cmd": "python3 -m chonoi.soak",
   "extensions": [
-    "burn"
+    "burn",
+    "leaderboard"
   ],
   "tuning": {
     "tick_hz": 60,
