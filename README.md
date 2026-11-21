@@ -1,5 +1,27 @@
 # Day 12 — AI SDLC: Quán Ăn Chợ Nổi
 
+## Nhóm nhom6ae — chạy game (macOS / Linux, Python 3, không cần cài thêm)
+
+```bash
+git clone https://github.com/NgChiVinh/K5-L3B-LAB-Day12-AI-SDLC-nhom6ae.git && cd K5-L3B-LAB-Day12-AI-SDLC-nhom6ae
+python3 -m chonoi.live --mode gather --inventory-out /tmp/kho.json     # buổi sáng: mở http://127.0.0.1:8000/
+python3 -m chonoi.live --mode quan --inventory /tmp/kho.json           # buổi tối (sau khi về bến): nạp kho buổi sáng
+```
+
+- **Điều khiển:** WASD / phím mũi tên = bơi / đi · **E** = cập bến, hái (buổi sáng) · nấu, bưng, phục vụ (buổi tối) · **Space** = bắt cá · **R** = chơi lại.
+- **Buổi sáng:** lặn bắt cá (Space, dưới nước), nổi lên hái bông súng / điên điển (E, mặt nước); oxy giảm khi lặn, hết oxy thì ngạt mất Máu, hết Máu thì ngất và mất cả giỏ. Về bến bấm E (hoặc hết giờ) để mang giỏ về kho.
+- **Buổi tối:** khách gọi món nấu được từ kho và giữ chỗ nguyên liệu. Ra bếp B1 bấm E để nấu → chín thì E để bưng → mang tới bàn T1 bấm E để phục vụ trước khi khách hết kiên nhẫn. Khách ăn xong trả tiền; phục vụ khi còn ≥ 50% kiên nhẫn thì có boa (+uy tín); khách bỏ đi thì −0.5 uy tín.
+- **Điểm:** `earned + 100 × floor(reputation)` (tiền thu cả lượt, nghìn đồng, cộng 100 cho mỗi điểm uy tín nguyên).
+- **Test (1 lệnh):** `PYTHONPATH=tests:. python3 -m unittest discover -s tests -v`
+- **Headless (Test Contract):** `python3 -m chonoi.headless --mode gather|quan --seed 1 --ticks 600 --out out.jsonl`
+- Windows: dùng `python`, đặt `PYTHONIOENCODING=utf-8`, test dùng `PYTHONPATH="tests;."` (xem `AGENTS.md`).
+- Nhóm, vai, thỏa thuận: [`TEAM.md`](TEAM.md) · đề: [`docs/prd/`](docs/prd/) · bằng chứng: [`docs/verification/`](docs/verification/), [`docs/proof/`](docs/proof/).
+
+### Sáng tạo của nhóm
+- Phase 1: chưa thêm phần sáng tạo — làm lõi đúng trước (HUD có tên món tiếng Việt và kho khả dụng là phần hiển thị bắt buộc, không đổi luật).
+
+---
+
 > **Làm theo nhóm 4–6 người** · Dùng AI để xây game 2D qua **4 phase** trong **3 giờ**: Út Sen lặn bắt cá, hái rau trên mặt nước rồi tối mở quán phục vụ khách.
 > **Yêu cầu từng phase mở đúng mốc giờ tại lab board:** **[Chợ Nổi Lab](https://claude.ai/artifact/E35v787wSx2wDgPTNhMVDg)** (cần đăng nhập claude.ai; có trợ giảng AI cho từng phase).
 
