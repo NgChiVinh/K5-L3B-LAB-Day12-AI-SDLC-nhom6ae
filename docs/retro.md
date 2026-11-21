@@ -64,5 +64,6 @@
   - Kiểm `git config user.email` của mọi người ngay kickoff (commit gắn tài khoản).
   - Chia lõi lớn (v1.2) theo lát song song ngay phút 0–7 thay vì Integrator làm hết; mỗi người viết phản tư + nhật ký
     AI cuối mỗi phase thay vì cuối buổi.
-- **Hành động tiếp theo:** truclamld và 22520160 bổ sung phản tư; TrungHieuPh thêm email vào GitHub; mỗi người điền
-  token/chi phí vào nhật ký AI nếu đo được.
+- **Hành động tiếp theo:** ~~truclamld và 22520160 bổ sung phản tư~~ (đã xong: PR #17, #18 — đủ 6/6). Còn:
+  TrungHieuPh thêm email `26ai.hiept3@vinuni.edu.vn` vào GitHub để commit được tính; mỗi người điền token/chi phí vào
+  nhật ký AI nếu đo được.
