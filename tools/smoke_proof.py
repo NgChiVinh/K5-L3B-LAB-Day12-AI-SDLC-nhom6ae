@@ -4,8 +4,9 @@
     python3 tools/smoke_proof.py --phase phase-1 --cmd "python -m chonoi.headless"   # máy không có python3
 
 Chạy đúng 2 lệnh của PRD bằng `headless_cmd` trong game.contract.json (hoặc --cmd), rồi kiểm:
-  - cả hai mã thoát 0; gather_end reason = docked; file kho = gather_end.inventory = {"bong_sung":2,"ca_loc":1}
-  - snapshot quán tick 0 có stock đúng file kho
+  - cả hai mã thoát 0; gather_end reason = docked; file kho = gather_end.inventory (Contract v1.2: mảng cá thể)
+  - file kho đúng id/kind của giỏ, fresh đã hao đúng 1 bước gather (100 − 0.5/60), sắp theo id
+  - snapshot quán tick 0 có stock đúng id, kind, fresh như file kho (dung sai ±0.01)
   - chạy lại gather cùng seed cho JSONL giống từng byte
 Ghi: dock.json, dock-inputs.json, gather.jsonl, catch.json, quan.jsonl, smoke.md (lệnh, commit, kết quả).
 Mã thoát: 0 đạt, 1 không đạt. Chỉ dùng thư viện chuẩn.
@@ -21,7 +22,9 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-EXPECTED = {"bong_sung": 2, "ca_loc": 1}
+HOLD = [{"id": "I1", "kind": "ca_loc", "fresh": 100}, {"id": "I2", "kind": "bong_sung", "fresh": 100},
+        {"id": "I3", "kind": "bong_sung", "fresh": 100}]  # v1.2 (TICKET-03): kho cá thể
+FRESH_AFTER_1 = 100 - 0.5 / 60
 
 
 def _rows(path):
@@ -55,7 +58,7 @@ def main(argv=None) -> int:
     p = lambda name: os.path.join(out, name)
 
     with open(p("dock.json"), "w", encoding="utf-8") as f:
-        json.dump({"gather": {"hold": ["ca_loc", "bong_sung", "bong_sung"]}}, f)
+        json.dump({"gather": {"hold": HOLD, "random_fish": False, "monsters": []}}, f)
     with open(p("dock-inputs.json"), "w", encoding="utf-8") as f:
         json.dump({"frames": [{"tick": 0, "interact": True}]}, f)
     for stale in ("catch.json", "gather.jsonl", "gather-rerun.jsonl", "quan.jsonl"):
@@ -88,14 +91,21 @@ def main(argv=None) -> int:
         end = ends[0]["data"] if ends else {}
         check("gather_end reason = docked", end.get("reason") == "docked", str(end.get("reason")))
         inv = json.load(open(p("catch.json"), encoding="utf-8")) if os.path.exists(p("catch.json")) else None
-        check("file kho đúng", inv == {"items": EXPECTED}, json.dumps(inv, ensure_ascii=False))
+        items = (inv or {}).get("items") or []
+        ok = ([(i["id"], i["kind"]) for i in items] == [(h["id"], h["kind"]) for h in HOLD]
+              and all(abs(i["fresh"] - FRESH_AFTER_1) < 1e-9 for i in items))
+        check("file kho đúng id/kind, fresh hao 1 bước", ok, json.dumps(inv, ensure_ascii=False))
         check("file kho = gather_end.inventory", inv is not None and inv == end.get("inventory"))
         rc = run(r_args)
         check("chạy lại cùng seed giống từng byte", rc == 0 and filecmp.cmp(p("gather.jsonl"), p("gather-rerun.jsonl"), shallow=False))
         os.remove(p("gather-rerun.jsonl")) if os.path.exists(p("gather-rerun.jsonl")) else None
     if qc == 0:
         snap0 = next((r for r in _rows(p("quan.jsonl")) if r.get("type") == "snapshot" and r.get("tick") == 0), {})
-        check("quán tick 0 stock = file kho", snap0.get("stock") == EXPECTED, json.dumps(snap0.get("stock"), ensure_ascii=False))
+        st = snap0.get("stock") or []
+        file_items = (json.load(open(p("catch.json"), encoding="utf-8")) if os.path.exists(p("catch.json")) else {}).get("items", [])
+        ok = (len(st) == len(file_items) and all(a["id"] == b["id"] and a["kind"] == b["kind"] and abs(a["fresh"] - b["fresh"]) <= 0.01
+                                                 for a, b in zip(st, file_items)))
+        check("quán tick 0 stock = file kho (id, kind, fresh)", ok, json.dumps(st, ensure_ascii=False))
 
     passed = all(ok for _, ok, _ in checks)
     md =[f"# Smoke hai tiến trình — {a.phase}", "",
