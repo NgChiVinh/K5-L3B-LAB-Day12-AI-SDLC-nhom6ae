@@ -13,6 +13,7 @@ Snapshot mọi pha thêm day, day_plan, upgrades, active_upgrades; event có th�
 import copy
 
 from .contract import plan_ingredients
+from .errors import BadInput
 from .ids import IdAllocator
 from .rng import Streams
 from .runner import Session, score_of
@@ -21,17 +22,22 @@ from .sim.quan import QuanSim
 from .sim.shop import ShopSim
 
 
-def merged_day_plan(tuning, override):
-    """Kế hoạch preset, ghi đè theo số Ngày từ scenario day.day_plan; ingredients luôn tính lại."""
+def merged_day_plan(tuning, override, days=5):
+    """Kế hoạch preset D1–D5 lặp lại; ghi đè scenario cũng lặp theo chu kỳ."""
     plan = {p["day"]: {"dishes": dict(p["dishes"]), "ingredients": dict(p["ingredients"])}
             for p in tuning["day_plan"]}
     for p in override or []:
         plan[p["day"]] = {"dishes": dict(p["dishes"]), "ingredients": plan_ingredients(p["dishes"], tuning["menu"])}
-    return plan
+    return {
+        day: {key: dict(value) for key, value in plan[(day - 1) % 5 + 1].items()}
+        for day in range(1, days + 1)
+    }
 
 
 class DaySession(Session):
     def __init__(self, tuning, scenario, seed, days=1):
+        if isinstance(days, bool) or not isinstance(days, int) or days < 1:
+            raise BadInput("days phải là số nguyên dương")
         self.mode = "day"
         self.tuning = tuning
         self.gather_tpl = scenario.get("gather", {})
@@ -44,7 +50,7 @@ class DaySession(Session):
         self.reputation = float(d.get("reputation", tuning["quan"]["reputation_initial"]))
         self.upgrades = dict(d.get("upgrades", {}))   # cấp đã mua
         self.active_upgrades = {}                     # cấp đang áp dụng (sao khi dựng Ngày)
-        self.plan = merged_day_plan(tuning, d.get("day_plan"))
+        self.plan = merged_day_plan(tuning, d.get("day_plan"), days)
         self.days = days
         self.day = 0
         self.days_completed = 0
